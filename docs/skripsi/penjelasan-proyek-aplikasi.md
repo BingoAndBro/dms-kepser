@@ -313,7 +313,7 @@ Aturan peran:
 
 ## PB-5.2 — Rantai permintaan tidak terikat ke dokumen material
 
-- **Solusi.** Kolom `komponen_id` (dengan FK), serta `jenis_permintaan_id`, `kategori_permintaan_id`, dan `detail_permintaan_id` pada dokumen. **Ketiga kolom terakhir tidak punya FK**; relasinya logis saja (lihat B.4).
+- **Solusi.** Kolom `komponen_id` (dengan FK), serta `jenis_permintaan_id`, `kategori_permintaan_id`, dan `detail_permintaan_id` pada dokumen. Sejak migrasi 0020 (D-20) ketiga kolom terakhir juga punya FK ke tabel master masing-masing (`ON DELETE restrict`), sama seperti `komponen_id` (lihat B.4).
 - **Keterkaitan.** Menyambungkan PB-4.1 ke PB-7.
 
 ---
@@ -744,7 +744,7 @@ Konvensi: PK `id uuid` kecuali disebut lain. **FK** = foreign key fisik. **Logis
 
 | Tabel | Kolom kunci | Constraint / index | FK |
 |---|---|---|---|
-| `dokumen_transaksi` | `judul`, `status` (default DRAFT), `current_step`, `revision_target`, `revision_notes`, `lampiran_urls` (jsonb: `kelengkapan_id`, `nama`, `url`, `uploaded_at`), `tahun`, `tanggal` (teks), `is_ketua_tim`, `is_non_material`, `nama_dokumen`, `keterangan_detail`, `nominal_realisasi` NUMERIC(15,2), `lampiran_dibersihkan_at/by/alasan` | CHECK nominal NULL atau ≥ 0; CHECK alasan ∈ {`BERKAS_DIMUSNAHKAN`, `PEMBERSIHAN_NON_MATERIAL`}; 17 index | `fungsi_id` (R), `kegiatan_jenis_id` → kegiatan (R), `komponen_id` (R), `created_by` → users (NA), `lampiran_dibersihkan_by` → users (SN); **`jenis_permintaan_id`, `kategori_permintaan_id`, `detail_permintaan_id`: logis** |
+| `dokumen_transaksi` | `judul`, `status` (default DRAFT), `current_step`, `revision_target`, `revision_notes`, `lampiran_urls` (jsonb: `kelengkapan_id`, `nama`, `url`, `uploaded_at`), `tahun`, `tanggal` (teks), `is_ketua_tim`, `is_non_material`, `nama_dokumen`, `keterangan_detail`, `nominal_realisasi` NUMERIC(15,2), `lampiran_dibersihkan_at/by/alasan` | CHECK nominal NULL atau ≥ 0; CHECK alasan ∈ {`BERKAS_DIMUSNAHKAN`, `PEMBERSIHAN_NON_MATERIAL`}; 17 index | `fungsi_id` (R), `kegiatan_jenis_id` → kegiatan (R), `komponen_id` (R), `created_by` → users (NA), `lampiran_dibersihkan_by` → users (SN), `jenis_permintaan_id` → master_jenis_permintaan (R), `kategori_permintaan_id` → master_kategori_permintaan (R), `detail_permintaan_id` → master_detail_permintaan (R) (FK sejak migrasi 0020, D-20) |
 | `log_aktivitas` | `aksi`, `catatan`, `step_urutan`, `timestamp` | INDEX (`dokumen_id`, `timestamp`) | `dokumen_id` (C), `user_id` (NA) |
 
 Lampiran dokumen **bukan tabel**: disimpan sebagai array JSON di `lampiran_urls`, dan indeks array menjadi identitas lampiran.
@@ -920,6 +920,8 @@ Halaman per peran: pegawai 13, ppk 10, ppspm 7, kasubag 10, PJ Kinerja 3, admin 
 - sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +4 berkas, +92 kasus;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`.
 
+**Tes integrasi** (`pnpm test:integration` = `vitest run --config vitest.integration.config.ts`, 27-09-2026, setelah D-20): **1 berkas, 3 kasus lulus**. Berkas `tests/integration/dokumen-transaksi-permintaan-fk.test.ts` menyambung ke PostgreSQL asli (bukan `db` yang di-mock) dan membuktikan FK D-20 menolak UUID yang tidak ada di master (kode `23503`); setiap kasus di dalam transaksi yang di-ROLLBACK. Folder `tests/integration/**` dikecualikan dari `pnpm test`, jadi angka Vitest di atas **tidak** memuat tes ini dan tetap sama sebelum/sesudah D-20. Butuh Postgres lokal jalan (lihat C.5).
+
 Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perkiraan** dari hitungan `it(`/`test(`; totalnya mengikuti hasil run di atas.
 
 | Modul | Berkas | ± Kasus |
@@ -973,6 +975,7 @@ Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/k
 3. **Migrasi dan seed:**
    - `pnpm db:migrate` (atau `db:local:migrate` dengan `.env.migration`);
    - `pnpm db:seed`. Seed pengguna dev butuh `DMS_DEV_SEED_PASSWORD_HASH`; hash dibuat dengan `pnpm auth:hash-password`.
+   - **Tes:** `pnpm test` (unit, tanpa basis data). Tambahan `pnpm test:integration` menguji constraint langsung ke Postgres; butuh langkah 1–3 di atas (container jalan, `DATABASE_URL` di `.env` benar, migrasi sudah diterapkan).
 4. **Pengembangan:** `pnpm dev` (Vite, port 3000). `host: true` membuat server bisa diakses dari LAN. `allowedHosts: true` dan plugin `basicSsl()` menjalankan **HTTPS sertifikat self-signed** (`vite.config.ts:11-24`).
 5. **Produksi LAN:** `pnpm build`, lalu `pnpm start` (`node .output/server/index.mjs` dengan `.env`). Port default server Nitro [BELUM TERVERIFIKASI]. Cookie sesi `Secure` aktif di production atau bila `DMS_SESSION_COOKIE_SECURE` diset.
 6. **Perawatan:** jadwalkan `pnpm storage:sweep-pending` (misalnya harian) bila perlu; sweeper otomatis juga berjalan setelah unggahan.
@@ -1038,7 +1041,7 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-17 | **✅ SELESAI `ae966d2`.** Label → "Karakteristik". *Temuan asli:* **Label UI "Jenis Dokumen"** di ringkasan sukses halaman revisi dan kirim ulang (dan teks konfirmasi pengajuan) sebenarnya menampilkan **karakteristik** (Material/Non-Material), bukan master yang sudah dihapus. Istilahnya membingungkan; sebaiknya "Karakteristik". | `revisi.tsx:402-405`, `resubmit.tsx:418`, `aju.tsx:1184` | R |
 | D-18 | **✅ SELESAI `ae966d2`.** Pesan: "Berkas untuk Cara Pembayaran ini pada TA {tahun} sudah ditutup." *Temuan asli:* **`CLOSED_UNAVAILABLE_REASON` tidak menyebut TA.** Pesan kelayakan tidak menjelaskan bahwa kuncinya per tahun. | `berkas-klasifikasi-eligibility.ts:42` | R |
 | D-19 | **Tabel `audit.audit_log` tidak punya tampilan UI.** Klaim "pemeriksa bisa menelusuri dokumen yang dihapus" hanya berlaku lewat akses basis data langsung. | tidak ditemukan pembaca di halaman | S (klaim skripsi) |
-| D-20 | **`dokumen_transaksi.jenis/kategori/detail_permintaan_id` tanpa FK.** Integritasnya hanya dijaga aplikasi. Gambarkan sebagai relasi logis di ERD, atau tambahkan FK. | skema `dokumen-transaksi.ts:58-60`; migrasi 0000 | S |
+| D-20 | **✅ SELESAI `8816524`.** Ketiga kolom kini `.references()` ke `master_jenis_permintaan` / `master_kategori_permintaan` / `master_detail_permintaan` (`ON DELETE restrict`, `ON UPDATE no action`, sama dengan `komponen_id`); migrasi `drizzle/0020_dokumen_transaksi_permintaan_fk.sql` (ditulis manual, idempoten). Sebelum migrasi dicek: 0 baris yatim dari 24 dokumen. Dibuktikan oleh tes integrasi pertama, `tests/integration/dokumen-transaksi-permintaan-fk.test.ts` (Postgres asli, transaksi di-ROLLBACK, harus gagal `23503`), dijalankan lewat `pnpm test:integration`. *Temuan asli:* **`dokumen_transaksi.jenis/kategori/detail_permintaan_id` tanpa FK.** Integritasnya hanya dijaga aplikasi. Gambarkan sebagai relasi logis di ERD, atau tambahkan FK. | skema `dokumen-transaksi.ts:58-60`; migrasi 0000 | S |
 | D-21 | **Kerangka Bab IV tertinggal dari kode:** UC-01 masih "email"; UC-23 masih "jenis dokumen"; UC-13/UC-14 belum menyebut Tahun Anggaran; Monitoring Dokumen Tim belum ada; Activity Log PJ Kinerja lintas pengguna belum disebut. | `docs/planning/ubah-alur-v1/kerangka-bab-iv.md` (commit `171fc5d`) vs B.1 | **T** (dokumen) |
 | D-22 | **PPK/PPSPM bisa membaca semua dokumen** pada status tertentu tanpa pembatasan unit/kegiatan. Sesuai desain satu satker; sebutkan sebagai asumsi. | `document-file-access.ts:381-395` | R |
 | D-23 | **✅ SELESAI `b4ee1a8`** (baru, dari audit D-3). 11 handler GET master data (`master-fungsi`, `master-kegiatan`, `master-komponen` +`$id`, `master-jenis` +`$id`, `master-kategori` +`$id`, `master-detail` +`$id`, `master-kelengkapan`) sebelumnya bertanda "Public read endpoint" dan bisa dibaca siapa pun di LAN tanpa login. Kini memakai `requireAnyLocalSession` (401 tanpa sesi; peran apa pun boleh, karena semua pemanggilnya sudah di halaman yang dijaga peran). Mutasi tetap ADMIN-only. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |

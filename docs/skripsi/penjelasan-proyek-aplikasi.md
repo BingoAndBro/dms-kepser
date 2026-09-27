@@ -912,12 +912,12 @@ Halaman per peran: pegawai 13, ppk 10, ppspm 7, kasubag 10, PJ Kinerja 3, admin 
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 10:28, branch `fix/temuan-bab-v` setelah perbaikan Bagian D):
-- **111 berkas tes lulus dari 111**;
-- **1.121 kasus lulus, 1 dilewati, 0 gagal** (1.122 total);
-- durasi 29,90 detik;
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 10:57, branch `fix/temuan-bab-v` setelah perbaikan Bagian D):
+- **112 berkas tes lulus dari 112**;
+- **1.144 kasus lulus, 1 dilewati, 0 gagal** (1.145 total);
+- durasi 24,71 detik;
 - `tsc --noEmit` bersih;
-- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +3 berkas, +61 kasus;
+- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +4 berkas, +84 kasus;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`.
 
 Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perkiraan** dari hitungan `it(`/`test(`; totalnya mengikuti hasil run di atas.
@@ -927,7 +927,7 @@ Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perki
 | Modul transisi status (`tests/fsm.test.ts`) | 1 | **49** |
 | arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~318 |
 | storage (unggah, tertunda, akses file, pembersihan) | 26 | ~245 |
-| dokumen (submit, revisi, guard transisi, PATCH, checklist kelengkapan, pembersihan) | 25 | ~226 |
+| dokumen (submit, revisi, guard transisi, PATCH, checklist kelengkapan, pembersihan, master data) | 27 | ~249 |
 | laporan (kinerja, periode, filter) | 7 | 91 |
 | auth (sesi, login, rate-limit, peran, navigasi) | 10 | 66 |
 | export | 1 | 19 |
@@ -1022,7 +1022,7 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-9 | **"Ingat saya" 30 hari tidak terjangkau.** Konstanta dan kolom `sessions.remember_me` ada, tetapi `loginSchema` tidak punya field-nya. | `session-constants.ts:10`, `src/lib/schemas/auth.ts` | R |
 | D-10 | **Validasi MIME memakai tipe yang dilaporkan browser.** Untuk DOCX/XLSX, magic bytes hanya membuktikan "berkas ZIP". | `document-upload-policy.ts:166-193` | R |
 | D-11 | **Token HMAC hanya untuk lampiran dokumen.** File berkas dan dokumen manual cukup dengan cek sesi + peran KSBU. Sebutkan dengan tepat di skripsi. | `berkas-arsip-file-access.ts`, `manual-arsip.ts` | R (dokumentasi) |
-| D-12 | **✅ SELESAI SEBAGIAN `df8ea51`.** Submit: `is_ketua_tim` = hasil penugasan di server (klaim Ketua Tim palsu tetap ditolak; Ketua Tim yang mengirim `false` dicatat & dicek sebagai Ketua Tim). PATCH yang mengubah `kegiatanId` menghitung ulang `is_ketua_tim`. Resubmit memakai nilai tersimpan (kini selalu hasil server); **tidak** dihitung ulang saat resubmit, karena penugasan bisa berubah setelah pengajuan dan halaman revisi membaca nilai tersimpan (lihat laporan). Baris lama sebelum `df8ea51` tidak dikoreksi. *Temuan asli:* **Pengaju bisa mengaku "Anggota" meski ia Ketua Tim.** Server hanya memverifikasi klaim Ketua Tim, bukan klaim Anggota, sehingga checklist Anggota yang lebih ringan bisa dipakai lewat manipulasi permintaan. | `local-submit-write-bridge.ts:294-306` | S |
+| D-12 | **✅ SELESAI `df8ea51`, `d328ad7`.** Submit: `is_ketua_tim` = hasil penugasan di server (klaim Ketua Tim palsu tetap ditolak; Ketua Tim yang mengirim `false` dicatat & dicek sebagai Ketua Tim). PATCH yang mengubah `kegiatanId` menghitung ulang `is_ketua_tim`. **Keputusan produk yang disengaja:** RESUBMIT memakai nilai `is_ketua_tim` yang dikunci sejak SUBMIT dan **tidak** memverifikasi ulang ke penugasan terkini — bila admin mencabut penugasan Ketua Tim setelah dokumen diajukan, dokumen itu tetap memakai checklist Ketua Tim sampai `kegiatanId`-nya sendiri berubah. Ini bukan celah; ditegaskan komentar kebijakan di `resubmit-validation.ts` dan tes yang menguncinya (`d328ad7`). Baris lama sebelum `df8ea51` tidak dikoreksi. *Temuan asli:* **Pengaju bisa mengaku "Anggota" meski ia Ketua Tim.** Server hanya memverifikasi klaim Ketua Tim, bukan klaim Anggota, sehingga checklist Anggota yang lebih ringan bisa dipakai lewat manipulasi permintaan. | `local-submit-write-bridge.ts:294-306` | S |
 | D-13 | **Pembersihan non-material menghapus file sebelum menandai basis data.** Bila `applyCleanup` gagal setelah file terhapus, dokumen tidak berlabel "dibersihkan" padahal file hilang. Aksi idempoten bisa diulang, tetapi tidak atomik. | `pembersihan-service.ts:187-236` | R |
 | D-14 | **✅ SELESAI `89a93bd`.** +10 kasus di `tests/fsm.test.ts` (39 → 49) dan +6 kasus rute. *Temuan asli:* **Tes modul transisi tidak mencakup `KEMBALIKAN`.** Kerangka Bab IV menargetkan "seluruh transisi lolos unit testing", jadi target ini **belum terpenuhi** untuk transisi #8. | `tests/fsm.test.ts` (39 kasus, 0 untuk KEMBALIKAN) | **T** (klaim skripsi) |
 | D-15 | **Tidak ada skrip e2e** di `package.json`; Playwright harus dipanggil manual. | `package.json:8-24` | R |
@@ -1041,7 +1041,7 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-20 | **`dokumen_transaksi.jenis/kategori/detail_permintaan_id` tanpa FK.** Integritasnya hanya dijaga aplikasi. Gambarkan sebagai relasi logis di ERD, atau tambahkan FK. | skema `dokumen-transaksi.ts:58-60`; migrasi 0000 | S |
 | D-21 | **Kerangka Bab IV tertinggal dari kode:** UC-01 masih "email"; UC-23 masih "jenis dokumen"; UC-13/UC-14 belum menyebut Tahun Anggaran; Monitoring Dokumen Tim belum ada; Activity Log PJ Kinerja lintas pengguna belum disebut. | `docs/planning/ubah-alur-v1/kerangka-bab-iv.md` (commit `171fc5d`) vs B.1 | **T** (dokumen) |
 | D-22 | **PPK/PPSPM bisa membaca semua dokumen** pada status tertentu tanpa pembatasan unit/kegiatan. Sesuai desain satu satker; sebutkan sebagai asumsi. | `document-file-access.ts:381-395` | R |
-| D-23 | **(baru, dari audit D-3) 11 handler GET master data tanpa sesi.** Semua bertanda komentar "Public read endpoint": `master-fungsi`, `master-kegiatan`, `master-komponen` (+`$id`), `master-jenis` (+`$id`), `master-kategori` (+`$id`), `master-detail` (+`$id`), `master-kelengkapan`. Siapa pun di LAN bisa membaca data referensi dan syarat kelengkapan. Mutasi tetap ADMIN. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
+| D-23 | **✅ SELESAI `b4ee1a8`** (baru, dari audit D-3). 11 handler GET master data (`master-fungsi`, `master-kegiatan`, `master-komponen` +`$id`, `master-jenis` +`$id`, `master-kategori` +`$id`, `master-detail` +`$id`, `master-kelengkapan`) sebelumnya bertanda "Public read endpoint" dan bisa dibaca siapa pun di LAN tanpa login. Kini memakai `requireAnyLocalSession` (401 tanpa sesi; peran apa pun boleh, karena semua pemanggilnya sudah di halaman yang dijaga peran). Mutasi tetap ADMIN-only. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
 | D-24 | **(baru) `PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). `is_ketua_tim` sudah dihitung ulang bila kegiatan berubah (D-12). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
 
 **Pertanyaan yang butuh keputusan Anda**

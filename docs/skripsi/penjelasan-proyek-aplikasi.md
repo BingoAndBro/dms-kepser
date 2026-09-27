@@ -274,7 +274,7 @@ Aturan peran:
   - **Server**: pengajuan ditolak bila kelengkapan wajib belum diunggah.
   - **Non-material** tanpa jenis permintaan tidak memakai checklist (`shouldReadRequiredKelengkapan`, `local-submit-write-bridge.ts:585-587`).
 - **Pengguna.** Admin mengelola; Pegawai dan Ketua Tim mengikuti.
-- **Catatan.** Halaman **revisi** pegawai dan halaman **kirim ulang** PPK masih memakai pencocokan bertingkat yang berbeda dari server. Lihat D-1.
+- **Catatan.** ✅ **D-1 selesai** (`69f7fbe`). Halaman revisi Pegawai dan kirim ulang PPK sempat memakai pencocokan bertingkat yang berbeda dari server; kini ketiganya memakai fungsi murni bersama `matchesKelengkapanSelection` (`src/lib/kelengkapan-match.ts`), exact-match 6 kolom yang sama dengan server.
 
 ## PB-4.3 — Klasifikasi dokumen (Cara Pembayaran) tidak terstruktur
 
@@ -470,7 +470,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 - **Solusi.** Hak akses berbasis peran ditegakkan di server. Handler API mengikuti urutan baku: cek same-origin untuk POST/PUT/PATCH/DELETE (`src/lib/security/same-origin.ts:3`), ambil sesi, cek peran yang dimiliki, validasi Zod, lalu jalankan layanan. Menyembunyikan menu hanya kosmetik. Admin tidak bisa menyetujui atau memberkaskan, karena ADMIN tidak pernah digabung dengan peran lain.
 - **Pengguna.** Semua aktor.
-- **Catatan.** Satu pengecualian ditemukan: `GET /api/kasubag/klasifikasi` tidak memeriksa sesi (D-3).
+- **Catatan.** ✅ **D-3 selesai** (`3a34192`). `GET /api/kasubag/klasifikasi` sempat tidak memeriksa sesi; kini memakai `requireKepalaSubBagianUmum` (401 tanpa sesi, 403 untuk peran lain), sama seperti mutasinya. Audit lanjutan menemukan 11 endpoint data master lain dengan celah serupa, sudah diperbaiki juga (D-23, `b4ee1a8`).
 
 ## PB-8.2 — Tidak ada pengelolaan identitas & wewenang
 
@@ -660,14 +660,14 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC). Kolom "Catatan kode" menandai ha
 | **M6 Administrasi Sistem** |||||
 | UC-22 | Mengelola Pengguna dan Penugasan Ketua Tim | Admin | Master User → `/admin/master-data/user` | `/api/users/**`, `/api/ketua-tim/**` | |
 | UC-23 | Mengelola Data Master | Admin | Departemen Fungsi, Master Kegiatan, Master Komponen, Jenis Permintaan, Kategori Permintaan, Detail Permintaan, Kelengkapan Dokumen → `/admin/master-data/*` | `/api/master-*` | **Hapus "jenis dokumen"** dari deskripsi UC-23 |
-| UC-24 | Mengatur Tampilan Aplikasi | Admin | Settings → `/admin/settings` | `/api/settings/{theme,general,epoch}` | Tema `se`/`sp`/`st` (`src/lib/schemas/settings.ts:3`) |
+| UC-24 | Mengatur Tampilan Aplikasi | Admin | **Pengaturan Aplikasi** → `/admin/settings` | `/api/settings/{theme,general,epoch}` | Tema `se`/`sp`/`st` (`src/lib/schemas/settings.ts:3`). Label menu diganti dari "Settings" (D-5, `e4abe5a`); path tidak berubah. |
 
 Fungsi yang ada di menu tetapi di luar 24 UC:
-- **Activity Log** untuk enam peran. Lingkup: sendiri, atau semua untuk Admin dan PJ Kinerja.
+- **Log Aktivitas** (dulu berlabel "Activity Log", D-5) untuk enam peran. Lingkup: sendiri, atau semua untuk Admin dan PJ Kinerja.
 - **Dashboard** per peran.
 - **Bantuan** (`/bantuan`).
 
-Menu "Settings" untuk lima peran non-admin **tidak punya tujuan** (D-5).
+✅ **D-5 selesai** (`e4abe5a`). Menu "Settings" tanpa tujuan sudah dihapus dari 5 peran non-admin; untuk Admin labelnya diganti "Pengaturan Aplikasi" (path tetap `/admin/settings`).
 
 ## B.2 Tabel transisi status dokumen (`src/lib/fsm.ts`)
 
@@ -1046,16 +1046,18 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-22 | **PPK/PPSPM bisa membaca semua dokumen** pada status tertentu tanpa pembatasan unit/kegiatan. Sesuai desain satu satker; sebutkan sebagai asumsi. | `document-file-access.ts:381-395` | R |
 | D-23 | **✅ SELESAI `b4ee1a8`** (baru, dari audit D-3). 11 handler GET master data (`master-fungsi`, `master-kegiatan`, `master-komponen` +`$id`, `master-jenis` +`$id`, `master-kategori` +`$id`, `master-detail` +`$id`, `master-kelengkapan`) sebelumnya bertanda "Public read endpoint" dan bisa dibaca siapa pun di LAN tanpa login. Kini memakai `requireAnyLocalSession` (401 tanpa sesi; peran apa pun boleh, karena semua pemanggilnya sudah di halaman yang dijaga peran). Mutasi tetap ADMIN-only. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
 | D-24 | **✅ SELESAI `38f5900`.** `updateDokumenSchema` kini `.strict()` dan hanya berisi `lampiranUrls`, `nominalRealisasi`, `keteranganDetail`, `namaDokumen` — persis yang dikirim `edit.tsx` (Non-Material) dan `revisi.tsx` (Material, sebelum resubmit). `kegiatanId`, `fungsiId`, `komponenId`, `jenisPermintaanId`, `kategoriPermintaanId`, `detailPermintaanId`, `tahun`, `tanggal`, `judul` ditolak 400 sebelum dokumen dibaca. *Temuan asli:* **`PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
+| D-25 | **(baru, dari T-13) `updated_at` = "kapan baris terakhir ditulis", bukan murni "kapan status terakhir berubah".** Monitoring Dokumen Tim menghitung "lama tertahan" dari `updated_at` (`monitoring-dokumen-tim.tsx:84-85`, `daysSinceUpdate`) — ini benar untuk menunjukkan lama di PPK/PPSPM/revisi-belum-dikirim-ulang, TAPI kolom itu juga ter-update saat Pegawai mengedit lampiran/nominal di masa revisi tanpa mengubah status. Klaim "sejak perubahan status terakhir" perlu kalimat yang lebih presisi: "sejak dokumen terakhir ditulis (submit, aksi persetujuan, atau edit saat revisi)". | `src/routes/pegawai/monitoring-dokumen-tim.tsx:84-85,759-762` | R (dokumentasi) |
+| D-26 | **(baru, dari T-5) Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi.** `GET /api/laporan/kinerja` (sumber `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi`) hanya membaca `dokumen_transaksi`, tidak pernah `arsip.manual_arsip` — walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. **Keputusan Anda:** seharusnya ikut dihitung. Belum dikerjakan — butuh desain tambahan (mode "per pegawai" ambigu untuk baris manual karena hanya ada `created_by`/KSBU, bukan pengaju asli; dan kapan baris manual dianggap "terealisasi"). | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | S (klaim skripsi + fitur) |
 
 **Pertanyaan yang butuh keputusan Anda**
 
-| # | Pertanyaan |
-|---|---|
-| Q1 | Monitoring Dokumen Tim dijadikan **UC baru** (menjadi 25 UC) atau **alur alternatif UC-19**? |
-| Q2 | D-4: kunci permanen (Cara Pembayaran, TA) setelah ditutup, apakah memang aturan bisnis? Bila ya, tulis sebagai keputusan perancangan di Bab IV. |
-| Q3 | D-1 dan D-2 diperbaiki sebelum pengujian sistem, atau dicatat sebagai keterbatasan? |
-| Q4 | D-14: tambah kasus uji `KEMBALIKAN` di `tests/fsm.test.ts` sebelum Bab V, supaya klaim "seluruh transisi lolos unit testing" benar? |
-| Q5 | Kolom "tahun" dokumen dan "tahun anggaran" berkas dibiarkan independen (dokumen TA 2025 bisa masuk berkas TA 2026)? |
+| # | Pertanyaan | Status |
+|---|---|---|
+| Q1 | Monitoring Dokumen Tim dijadikan **UC baru** (menjadi 25 UC) atau **alur alternatif UC-19**? | 🔲 **Belum diputuskan** |
+| Q2 | D-4: kunci permanen (Cara Pembayaran, TA) setelah ditutup, apakah memang aturan bisnis? Bila ya, tulis sebagai keputusan perancangan di Bab IV. | 🔲 **Belum diputuskan** |
+| Q3 | D-1 dan D-2 diperbaiki sebelum pengujian sistem, atau dicatat sebagai keterbatasan? | ✅ **Diputuskan: diperbaiki.** D-1 (`69f7fbe`), D-2 (`f26ee7f`). |
+| Q4 | D-14: tambah kasus uji `KEMBALIKAN` di `tests/fsm.test.ts` sebelum Bab V, supaya klaim "seluruh transisi lolos unit testing" benar? | ✅ **Diputuskan: ditambahkan.** `89a93bd` — seluruh 8 transisi kini punya tes unit. |
+| Q5 | Kolom "tahun" dokumen dan "tahun anggaran" berkas dibiarkan independen (dokumen TA 2025 bisa masuk berkas TA 2026)? | 🔲 **Belum diputuskan** |
 
 ---
 

@@ -912,22 +912,24 @@ Halaman per peran: pegawai 13, ppk 10, ppspm 7, kasubag 10, PJ Kinerja 3, admin 
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 08:56):
-- **108 berkas tes lulus dari 108**;
-- **1.060 kasus lulus, 1 dilewati, 0 gagal** (1.061 total);
-- durasi 30,35 detik;
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 10:28, branch `fix/temuan-bab-v` setelah perbaikan Bagian D):
+- **111 berkas tes lulus dari 111**;
+- **1.121 kasus lulus, 1 dilewati, 0 gagal** (1.122 total);
+- durasi 29,90 detik;
+- `tsc --noEmit` bersih;
+- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +3 berkas, +61 kasus;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`.
 
 Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perkiraan** dari hitungan `it(`/`test(`; totalnya mengikuti hasil run di atas.
 
 | Modul | Berkas | ± Kasus |
 |---|---|---|
-| Modul transisi status (`tests/fsm.test.ts`) | 1 | **39** |
-| arsiparis (pemberkasan, manual, ekspor berkas) | 22 | ~311 |
+| Modul transisi status (`tests/fsm.test.ts`) | 1 | **49** |
+| arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~318 |
 | storage (unggah, tertunda, akses file, pembersihan) | 26 | ~245 |
-| dokumen (submit, revisi, guard transisi, pembersihan) | 22 | ~185 |
+| dokumen (submit, revisi, guard transisi, PATCH, checklist kelengkapan, pembersihan) | 25 | ~226 |
 | laporan (kinerja, periode, filter) | 7 | 91 |
-| auth (sesi, login, rate-limit, peran, navigasi) | 10 | 63 |
+| auth (sesi, login, rate-limit, peran, navigasi) | 10 | 66 |
 | export | 1 | 19 |
 | utils | 3 | 19 |
 | components | 3 | 16 |
@@ -935,18 +937,19 @@ Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perki
 | users | 3 | ~16 |
 | dashboard / db / profile / kelengkapan / hooks / pegawai / styles | 8 | ~33 |
 
-Rincian 39 kasus `tests/fsm.test.ts`:
+Rincian 49 kasus `tests/fsm.test.ts`:
 
 | Kelompok | Kasus |
 |---|---|
-| Transisi valid | 7 |
-| Validasi aktor | 16 |
+| Transisi valid (8 transisi, termasuk `NEED_REVISION --KEMBALIKAN--> NEED_REVISION`) | 8 |
+| Validasi aktor (termasuk KEMBALIKAN: PPK valid; PEGAWAI, PPSPM, KSBU, ADMIN ditolak) | 21 |
 | `revisionTarget` pada REJECT | 3 |
 | Validasi RESUBMIT | 4 |
+| Validasi KEMBALIKAN (status sumber salah ditolak; hasil `revision_target` = USER) | 4 |
 | Kombinasi tidak valid | 7 |
 | Bentuk error | 2 |
 
-**Transisi `KEMBALIKAN` tidak diuji di berkas ini** (D-14).
+Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/kembalikan/$id` ada di `tests/unit/dokumen/dokumen-transition-guards-route.test.ts`: 400 bila `revision_target` ≠ PPK atau status bukan NEED_REVISION, 403 untuk peran non-PPK, catatan otomatis memuat "Alasan penolakan PPSPM", 409 saat balapan.
 
 **Playwright (e2e)**, 68 kasus di `tests/e2e/`:
 
@@ -995,9 +998,9 @@ Rincian 39 kasus `tests/fsm.test.ts`:
 | **Performance efficiency** | Perilaku waktu, kapasitas | Batas ZIP 500 dokumen, batas pembersihan 200, laporan kinerja maksimal 2000 baris, Activity Log maksimal 500 baris, unggah 5 MB | `document-zip.ts:71`, `pembersihan.ts:21`, `kinerja.ts`, `activity-log.ts` |
 | **Compatibility** | Ko-eksistensi / interoperabilitas | Berdiri sendiri; hasil ekspor ZIP/CSV bisa dipakai di aplikasi lain secara manual | §1 |
 | **Interaction capability (usability)** | Kemudahan dipelajari, operabilitas, perlindungan dari kesalahan, estetika | Formulir bertahap + checklist; halaman Bantuan; menu per peran; konfirmasi ketik-persis; guard perubahan belum disimpan; toast; tiga tema; peringatan dokumen tertahan | `aju.tsx`, `bantuan.tsx`, `navigation.ts`, `ConfirmDialog` |
-| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.060 tes unit lulus | §PB-2.2, PB-6.5, C.4 |
+| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.121 tes unit lulus | §PB-2.2, PB-6.5, C.4 |
 | **Security** | Kerahasiaan, integritas, non-repudiasi, akuntabilitas, autentisitas | Argon2id; sesi 8 jam dengan token hash; rate-limit login; peran dicek server; same-origin; URL lampiran HMAC; cek magic bytes; riwayat dokumen/berkas/audit | Lampiran E |
-| **Maintainability** | Modularitas, dapat diuji, dapat dimodifikasi | Lapisan route/lib/db; modul transisi terpusat; injeksi repository; Zod di setiap batas; 108 berkas tes | Lampiran B, C.4 |
+| **Maintainability** | Modularitas, dapat diuji, dapat dimodifikasi | Lapisan route/lib/db; modul transisi terpusat; injeksi repository; Zod di setiap batas; 111 berkas tes | Lampiran B, C.4 |
 | **Flexibility (portability)** | Kemampuan instal, adaptabilitas | Docker PostgreSQL; berjalan di LAN tanpa internet; konfigurasi via `.env` | C.5 |
 
 ---
@@ -1008,20 +1011,20 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 
 | # | Temuan | Bukti | Dampak |
 |---|---|---|---|
-| D-1 | **Checklist di halaman revisi ≠ server.** Halaman revisi Pegawai dan kirim ulang PPK memakai `matchesCurrentChain` yang **bertingkat**: bila ada detail, hanya detail yang dicocokkan; bila rantai kosong, semua item kegiatan tampil. Halaman PPK **tidak punya cabang komponen**. Server memakai exact-match 6 kolom. Checklist yang dilihat pengguna bisa berbeda dari yang ditegakkan server. | `src/routes/pegawai/dokumen/$id/revisi.tsx:97-121`, `src/routes/ppk/dokumen/$id/resubmit.tsx:96-113` vs `local-submit-drizzle-adapter.ts:159-173` | **T** |
-| D-2 | **Nominal masih bisa diubah tanpa cek > 0.** `PATCH /api/dokumen/$id` menerima `nominalRealisasi` `min(0)`/nullable, termasuk untuk dokumen **non-material**. `PATCH /api/ppk/resubmit/$id` (simpan tanpa kirim) juga tanpa cek > 0. Pengecekan > 0 baru terjadi saat kirim ulang. | `src/routes/api/dokumen.$id.ts:560-565`, `src/lib/schemas/dokumen.ts:54`, `src/routes/api/ppk/resubmit/$id.ts:328-331` | **S** |
-| D-3 | **`GET /api/kasubag/klasifikasi` tanpa cek sesi/peran.** Siapa pun di jaringan bisa membaca pohon klasifikasi dan kelayakan berkas per TA. Rute tulis di berkas yang sama tetap memakai `requireKepalaSubBagianUmum`. | `src/routes/api/kasubag/klasifikasi/index.ts:130-` | **S** |
+| D-1 | **✅ SELESAI `69f7fbe`.** Fungsi murni bersama `matchesKelengkapanSelection` (`src/lib/kelengkapan-match.ts`, exact-match 6 kolom) dipakai `KelengkapanChecklist`, halaman revisi Pegawai, dan kirim ulang PPK; `GET /api/ppk/resubmit/$id` kini mengirim `komponen_id`. *Temuan asli:* **Checklist di halaman revisi ≠ server.** Halaman revisi Pegawai dan kirim ulang PPK memakai `matchesCurrentChain` yang **bertingkat**: bila ada detail, hanya detail yang dicocokkan; bila rantai kosong, semua item kegiatan tampil. Halaman PPK **tidak punya cabang komponen**. Server memakai exact-match 6 kolom. Checklist yang dilihat pengguna bisa berbeda dari yang ditegakkan server. | `src/routes/pegawai/dokumen/$id/revisi.tsx:97-121`, `src/routes/ppk/dokumen/$id/resubmit.tsx:96-113` vs `local-submit-drizzle-adapter.ts:159-173` | **T** |
+| D-2 | **✅ SELESAI `f26ee7f`.** `validateNominalUpdate` di kedua PATCH: Material > 0, Non-Material menolak nominal; dicek sebelum file dipindah. *Temuan asli:* **Nominal masih bisa diubah tanpa cek > 0.** `PATCH /api/dokumen/$id` menerima `nominalRealisasi` `min(0)`/nullable, termasuk untuk dokumen **non-material**. `PATCH /api/ppk/resubmit/$id` (simpan tanpa kirim) juga tanpa cek > 0. Pengecekan > 0 baru terjadi saat kirim ulang. | `src/routes/api/dokumen.$id.ts:560-565`, `src/lib/schemas/dokumen.ts:54`, `src/routes/api/ppk/resubmit/$id.ts:328-331` | **S** |
+| D-3 | **✅ SELESAI `3a34192`.** GET memakai `requireKepalaSubBagianUmum` (401/403). Pemanggilnya hanya halaman `/kasubag/*`. Audit endpoint lain: lihat D-23. *Temuan asli:* **`GET /api/kasubag/klasifikasi` tanpa cek sesi/peran.** Siapa pun di jaringan bisa membaca pohon klasifikasi dan kelayakan berkas per TA. Rute tulis di berkas yang sama tetap memakai `requireKepalaSubBagianUmum`. | `src/routes/api/kasubag/klasifikasi/index.ts:130-` | **S** |
 | D-4 | **Setelah ditutup, (Cara Pembayaran, TA) terkunci permanen.** Bila KSBU salah menutup berkas atau butuh SPM kedua pada TA yang sama, tidak ada jalan keluar di aplikasi. Perlu keputusan: memang diinginkan (1 Cara Pembayaran = 1 SPM per TA), atau perlu fitur "buka kembali". | `0018`, `berkas-arsip-service.ts:851-876`, `CloseBerkasDialog.tsx` | **T** (keputusan bisnis) |
-| D-5 | Menu **"Settings" tanpa tujuan** di 5 peran non-admin. | `src/config/navigation.ts` (item tanpa `to`) | R |
+| D-5 | **✅ SELESAI `e4abe5a`.** Item dihapus dari 5 peran; ADMIN: "Pengaturan Aplikasi" (path `/admin/settings` tetap); "Activity Log" → "Log Aktivitas" di semua peran. *Temuan asli:* Menu **"Settings" tanpa tujuan** di 5 peran non-admin. | `src/config/navigation.ts` (item tanpa `to`) | R |
 | D-6 | **Pencampuran ADMIN diringkas diam-diam**, bukan ditolak. Pesan "ADMIN tidak boleh digabung…" tidak pernah muncul karena `normalizeAdminRolePayload` sudah membuang peran lain. Admin bisa mengira PPK tersimpan padahal tidak. | `role-assignment.ts:6-16`, `users/index.ts:107-108` | S |
 | D-7 | **Pemeriksaan "admin aktif terakhir" tanpa kunci baris.** Dua permintaan bersamaan secara teori bisa menonaktifkan dua admin terakhir. | `local-user-mutations.ts:437-449` | R |
 | D-8 | **Rate-limit login di memori proses**, dengan kunci IP dari `x-forwarded-for`/`x-real-ip` yang bisa dipalsukan klien. Hilang saat restart dan tidak berbagi antarproses. | `login-rate-limit.ts:28`, `login.ts:96-103` | S |
 | D-9 | **"Ingat saya" 30 hari tidak terjangkau.** Konstanta dan kolom `sessions.remember_me` ada, tetapi `loginSchema` tidak punya field-nya. | `session-constants.ts:10`, `src/lib/schemas/auth.ts` | R |
 | D-10 | **Validasi MIME memakai tipe yang dilaporkan browser.** Untuk DOCX/XLSX, magic bytes hanya membuktikan "berkas ZIP". | `document-upload-policy.ts:166-193` | R |
 | D-11 | **Token HMAC hanya untuk lampiran dokumen.** File berkas dan dokumen manual cukup dengan cek sesi + peran KSBU. Sebutkan dengan tepat di skripsi. | `berkas-arsip-file-access.ts`, `manual-arsip.ts` | R (dokumentasi) |
-| D-12 | **Pengaju bisa mengaku "Anggota" meski ia Ketua Tim.** Server hanya memverifikasi klaim Ketua Tim, bukan klaim Anggota, sehingga checklist Anggota yang lebih ringan bisa dipakai lewat manipulasi permintaan. | `local-submit-write-bridge.ts:294-306` | S |
+| D-12 | **✅ SELESAI SEBAGIAN `df8ea51`.** Submit: `is_ketua_tim` = hasil penugasan di server (klaim Ketua Tim palsu tetap ditolak; Ketua Tim yang mengirim `false` dicatat & dicek sebagai Ketua Tim). PATCH yang mengubah `kegiatanId` menghitung ulang `is_ketua_tim`. Resubmit memakai nilai tersimpan (kini selalu hasil server); **tidak** dihitung ulang saat resubmit, karena penugasan bisa berubah setelah pengajuan dan halaman revisi membaca nilai tersimpan (lihat laporan). Baris lama sebelum `df8ea51` tidak dikoreksi. *Temuan asli:* **Pengaju bisa mengaku "Anggota" meski ia Ketua Tim.** Server hanya memverifikasi klaim Ketua Tim, bukan klaim Anggota, sehingga checklist Anggota yang lebih ringan bisa dipakai lewat manipulasi permintaan. | `local-submit-write-bridge.ts:294-306` | S |
 | D-13 | **Pembersihan non-material menghapus file sebelum menandai basis data.** Bila `applyCleanup` gagal setelah file terhapus, dokumen tidak berlabel "dibersihkan" padahal file hilang. Aksi idempoten bisa diulang, tetapi tidak atomik. | `pembersihan-service.ts:187-236` | R |
-| D-14 | **Tes modul transisi tidak mencakup `KEMBALIKAN`.** Kerangka Bab IV menargetkan "seluruh transisi lolos unit testing", jadi target ini **belum terpenuhi** untuk transisi #8. | `tests/fsm.test.ts` (39 kasus, 0 untuk KEMBALIKAN) | **T** (klaim skripsi) |
+| D-14 | **✅ SELESAI `89a93bd`.** +10 kasus di `tests/fsm.test.ts` (39 → 49) dan +6 kasus rute. *Temuan asli:* **Tes modul transisi tidak mencakup `KEMBALIKAN`.** Kerangka Bab IV menargetkan "seluruh transisi lolos unit testing", jadi target ini **belum terpenuhi** untuk transisi #8. | `tests/fsm.test.ts` (39 kasus, 0 untuk KEMBALIKAN) | **T** (klaim skripsi) |
 | D-15 | **Tidak ada skrip e2e** di `package.json`; Playwright harus dipanggil manual. | `package.json:8-24` | R |
 | D-16 | **Kode peninggalan:** | | R |
 | | • `/api/dokumen/rename-pending` tidak dipanggil klien mana pun | `src/routes/api/dokumen/rename-pending.ts` | |
@@ -1032,12 +1035,14 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | | • kolom siklus lama di `manual_arsip` dan `retensi_inaktif`/`masa_inaktif_berakhir` | skema arsip | |
 | | • tipe `AppUser.email: string` | `src/lib/types/auth.ts:9` | |
 | | • rute legacy `/dokumen`, `/dokumen/$id`, `/dokumen/$id/edit`, `/dokumen/aju`, `/dokumen/aji` (salah ketik, redirect), `/dokumen/saya` | `src/routes/dokumen/*` | |
-| D-17 | **Label UI "Jenis Dokumen"** di ringkasan sukses halaman revisi dan kirim ulang (dan teks konfirmasi pengajuan) sebenarnya menampilkan **karakteristik** (Material/Non-Material), bukan master yang sudah dihapus. Istilahnya membingungkan; sebaiknya "Karakteristik". | `revisi.tsx:402-405`, `resubmit.tsx:418`, `aju.tsx:1184` | R |
-| D-18 | **`CLOSED_UNAVAILABLE_REASON` tidak menyebut TA.** Pesan kelayakan tidak menjelaskan bahwa kuncinya per tahun. | `berkas-klasifikasi-eligibility.ts:42` | R |
+| D-17 | **✅ SELESAI `ae966d2`.** Label → "Karakteristik". *Temuan asli:* **Label UI "Jenis Dokumen"** di ringkasan sukses halaman revisi dan kirim ulang (dan teks konfirmasi pengajuan) sebenarnya menampilkan **karakteristik** (Material/Non-Material), bukan master yang sudah dihapus. Istilahnya membingungkan; sebaiknya "Karakteristik". | `revisi.tsx:402-405`, `resubmit.tsx:418`, `aju.tsx:1184` | R |
+| D-18 | **✅ SELESAI `ae966d2`.** Pesan: "Berkas untuk Cara Pembayaran ini pada TA {tahun} sudah ditutup." *Temuan asli:* **`CLOSED_UNAVAILABLE_REASON` tidak menyebut TA.** Pesan kelayakan tidak menjelaskan bahwa kuncinya per tahun. | `berkas-klasifikasi-eligibility.ts:42` | R |
 | D-19 | **Tabel `audit.audit_log` tidak punya tampilan UI.** Klaim "pemeriksa bisa menelusuri dokumen yang dihapus" hanya berlaku lewat akses basis data langsung. | tidak ditemukan pembaca di halaman | S (klaim skripsi) |
 | D-20 | **`dokumen_transaksi.jenis/kategori/detail_permintaan_id` tanpa FK.** Integritasnya hanya dijaga aplikasi. Gambarkan sebagai relasi logis di ERD, atau tambahkan FK. | skema `dokumen-transaksi.ts:58-60`; migrasi 0000 | S |
 | D-21 | **Kerangka Bab IV tertinggal dari kode:** UC-01 masih "email"; UC-23 masih "jenis dokumen"; UC-13/UC-14 belum menyebut Tahun Anggaran; Monitoring Dokumen Tim belum ada; Activity Log PJ Kinerja lintas pengguna belum disebut. | `docs/planning/ubah-alur-v1/kerangka-bab-iv.md` (commit `171fc5d`) vs B.1 | **T** (dokumen) |
 | D-22 | **PPK/PPSPM bisa membaca semua dokumen** pada status tertentu tanpa pembatasan unit/kegiatan. Sesuai desain satu satker; sebutkan sebagai asumsi. | `document-file-access.ts:381-395` | R |
+| D-23 | **(baru, dari audit D-3) 11 handler GET master data tanpa sesi.** Semua bertanda komentar "Public read endpoint": `master-fungsi`, `master-kegiatan`, `master-komponen` (+`$id`), `master-jenis` (+`$id`), `master-kategori` (+`$id`), `master-detail` (+`$id`), `master-kelengkapan`. Siapa pun di LAN bisa membaca data referensi dan syarat kelengkapan. Mutasi tetap ADMIN. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
+| D-24 | **(baru) `PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). `is_ketua_tim` sudah dihitung ulang bila kegiatan berubah (D-12). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
 
 **Pertanyaan yang butuh keputusan Anda**
 

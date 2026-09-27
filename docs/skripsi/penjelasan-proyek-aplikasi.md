@@ -626,7 +626,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 ## B.1 Use case per modul (dicocokkan dengan `src/config/navigation.ts` dan rute nyata)
 
-Penomoran UC mengikuti kerangka Bab IV (24 UC). Kolom "Catatan kode" menandai hal yang **harus disesuaikan** di kerangka.
+Penomoran UC mengikuti kerangka Bab IV (24 UC), **+1 UC baru diputuskan (Q1) → total 25 UC**: Memantau Dokumen Tim (UC-25). Kolom "Catatan kode" menandai hal yang **harus disesuaikan** di kerangka.
 
 | UC | Nama | Aktor | Menu (label → path) | Endpoint utama | Catatan kode |
 |---|---|---|---|---|---|
@@ -654,7 +654,7 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC). Kolom "Catatan kode" menandai ha
 | **M5 Pelaporan dan Pemantauan** |||||
 | UC-18 | Melihat Laporan Saya | Pegawai | Laporan Saya → `/pegawai/laporan/saya` | `GET /api/laporan/saya`, `POST …/export-zip` | |
 | UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final` | |
-| *UC-baru* | **Memantau Dokumen Tim** | Ketua Tim | PJ Kegiatan › Monitoring Dokumen Tim → `/pegawai/monitoring-dokumen-tim` | `GET /api/laporan/kegiatan?scope=monitoring` | **Belum ada di kerangka 24 UC**; bisa dijadikan UC sendiri atau alur alternatif UC-19 (D-Q1) |
+| UC-25 | **Memantau Dokumen Tim** | Ketua Tim | PJ Kegiatan › Monitoring Dokumen Tim → `/pegawai/monitoring-dokumen-tim` | `GET /api/laporan/kegiatan?scope=monitoring` | ✅ **Diputuskan (Q1): UC baru**, bukan alur alternatif UC-19. **Belum ada di kerangka Bab IV** — tambahkan sebagai UC-25 di kerangka (lihat D-21). |
 | UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja` | |
 | UC-21 | Melihat Laporan Kinerja | PJ Kinerja | Laporan Kinerja → `/penanggung-jawab-kinerja/laporan-kinerja` | `GET /api/laporan/kinerja?scope=laporan_kinerja` | |
 | **M6 Administrasi Sistem** |||||
@@ -1017,7 +1017,7 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-1 | **✅ SELESAI `69f7fbe`.** Fungsi murni bersama `matchesKelengkapanSelection` (`src/lib/kelengkapan-match.ts`, exact-match 6 kolom) dipakai `KelengkapanChecklist`, halaman revisi Pegawai, dan kirim ulang PPK; `GET /api/ppk/resubmit/$id` kini mengirim `komponen_id`. *Temuan asli:* **Checklist di halaman revisi ≠ server.** Halaman revisi Pegawai dan kirim ulang PPK memakai `matchesCurrentChain` yang **bertingkat**: bila ada detail, hanya detail yang dicocokkan; bila rantai kosong, semua item kegiatan tampil. Halaman PPK **tidak punya cabang komponen**. Server memakai exact-match 6 kolom. Checklist yang dilihat pengguna bisa berbeda dari yang ditegakkan server. | `src/routes/pegawai/dokumen/$id/revisi.tsx:97-121`, `src/routes/ppk/dokumen/$id/resubmit.tsx:96-113` vs `local-submit-drizzle-adapter.ts:159-173` | **T** |
 | D-2 | **✅ SELESAI `f26ee7f`.** `validateNominalUpdate` di kedua PATCH: Material > 0, Non-Material menolak nominal; dicek sebelum file dipindah. *Temuan asli:* **Nominal masih bisa diubah tanpa cek > 0.** `PATCH /api/dokumen/$id` menerima `nominalRealisasi` `min(0)`/nullable, termasuk untuk dokumen **non-material**. `PATCH /api/ppk/resubmit/$id` (simpan tanpa kirim) juga tanpa cek > 0. Pengecekan > 0 baru terjadi saat kirim ulang. | `src/routes/api/dokumen.$id.ts:560-565`, `src/lib/schemas/dokumen.ts:54`, `src/routes/api/ppk/resubmit/$id.ts:328-331` | **S** |
 | D-3 | **✅ SELESAI `3a34192`.** GET memakai `requireKepalaSubBagianUmum` (401/403). Pemanggilnya hanya halaman `/kasubag/*`. Audit endpoint lain: lihat D-23. *Temuan asli:* **`GET /api/kasubag/klasifikasi` tanpa cek sesi/peran.** Siapa pun di jaringan bisa membaca pohon klasifikasi dan kelayakan berkas per TA. Rute tulis di berkas yang sama tetap memakai `requireKepalaSubBagianUmum`. | `src/routes/api/kasubag/klasifikasi/index.ts:130-` | **S** |
-| D-4 | **Setelah ditutup, (Cara Pembayaran, TA) terkunci permanen.** Bila KSBU salah menutup berkas atau butuh SPM kedua pada TA yang sama, tidak ada jalan keluar di aplikasi. Perlu keputusan: memang diinginkan (1 Cara Pembayaran = 1 SPM per TA), atau perlu fitur "buka kembali". | `0018`, `berkas-arsip-service.ts:851-876`, `CloseBerkasDialog.tsx` | **T** (keputusan bisnis) |
+| D-4 | ✅ **Diputuskan (Q2), bukan bug.** Setelah ditutup, (Cara Pembayaran, TA) terkunci permanen **secara sengaja**: 1 Cara Pembayaran = 1 SPM per TA. Tulis sebagai keputusan perancangan di Bab IV, bukan keterbatasan. Tidak ada perubahan kode. *Temuan asli:* Bila KSBU salah menutup berkas atau butuh SPM kedua pada TA yang sama, tidak ada jalan keluar di aplikasi. | `0018`, `berkas-arsip-service.ts:851-876`, `CloseBerkasDialog.tsx` | R (keputusan diambil) |
 | D-5 | **✅ SELESAI `e4abe5a`.** Item dihapus dari 5 peran; ADMIN: "Pengaturan Aplikasi" (path `/admin/settings` tetap); "Activity Log" → "Log Aktivitas" di semua peran. *Temuan asli:* Menu **"Settings" tanpa tujuan** di 5 peran non-admin. | `src/config/navigation.ts` (item tanpa `to`) | R |
 | D-6 | **Pencampuran ADMIN diringkas diam-diam**, bukan ditolak. Pesan "ADMIN tidak boleh digabung…" tidak pernah muncul karena `normalizeAdminRolePayload` sudah membuang peran lain. Admin bisa mengira PPK tersimpan padahal tidak. | `role-assignment.ts:6-16`, `users/index.ts:107-108` | S |
 | D-7 | **Pemeriksaan "admin aktif terakhir" tanpa kunci baris.** Dua permintaan bersamaan secara teori bisa menonaktifkan dua admin terakhir. | `local-user-mutations.ts:437-449` | R |
@@ -1053,11 +1053,11 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 
 | # | Pertanyaan | Status |
 |---|---|---|
-| Q1 | Monitoring Dokumen Tim dijadikan **UC baru** (menjadi 25 UC) atau **alur alternatif UC-19**? | 🔲 **Belum diputuskan** |
-| Q2 | D-4: kunci permanen (Cara Pembayaran, TA) setelah ditutup, apakah memang aturan bisnis? Bila ya, tulis sebagai keputusan perancangan di Bab IV. | 🔲 **Belum diputuskan** |
+| Q1 | Monitoring Dokumen Tim dijadikan **UC baru** (menjadi 25 UC) atau **alur alternatif UC-19**? | ✅ **Diputuskan: UC baru (UC-25).** Total kerangka jadi 25 UC (lihat B.1). |
+| Q2 | D-4: kunci permanen (Cara Pembayaran, TA) setelah ditutup, apakah memang aturan bisnis? Bila ya, tulis sebagai keputusan perancangan di Bab IV. | ✅ **Diputuskan: aturan bisnis disengaja** (1 Cara Pembayaran = 1 SPM per TA). Tidak perlu fitur "buka kembali". |
 | Q3 | D-1 dan D-2 diperbaiki sebelum pengujian sistem, atau dicatat sebagai keterbatasan? | ✅ **Diputuskan: diperbaiki.** D-1 (`69f7fbe`), D-2 (`f26ee7f`). |
 | Q4 | D-14: tambah kasus uji `KEMBALIKAN` di `tests/fsm.test.ts` sebelum Bab V, supaya klaim "seluruh transisi lolos unit testing" benar? | ✅ **Diputuskan: ditambahkan.** `89a93bd` — seluruh 8 transisi kini punya tes unit. |
-| Q5 | Kolom "tahun" dokumen dan "tahun anggaran" berkas dibiarkan independen (dokumen TA 2025 bisa masuk berkas TA 2026)? | 🔲 **Belum diputuskan** |
+| Q5 | Kolom "tahun" dokumen dan "tahun anggaran" berkas dibiarkan independen (dokumen TA 2025 bisa masuk berkas TA 2026)? | ✅ **Diputuskan: dibiarkan independen.** Sesuai desain saat ini (dokumen bisa realistis diajukan di TA berbeda dari saat diberkaskan). Tulis sebagai catatan desain di Bab IV, bukan keterbatasan; tidak ada perubahan kode. |
 
 ---
 

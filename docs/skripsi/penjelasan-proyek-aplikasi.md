@@ -655,7 +655,7 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC), **+1 UC baru diputuskan (Q1) →
 | UC-18 | Melihat Laporan Saya | Pegawai | Laporan Saya → `/pegawai/laporan/saya` | `GET /api/laporan/saya`, `POST …/export-zip` | |
 | UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final` | |
 | UC-25 | **Memantau Dokumen Tim** | Ketua Tim | PJ Kegiatan › Monitoring Dokumen Tim → `/pegawai/monitoring-dokumen-tim` | `GET /api/laporan/kegiatan?scope=monitoring` | ✅ **Diputuskan (Q1): UC baru**, bukan alur alternatif UC-19. **Belum ada di kerangka Bab IV** — tambahkan sebagai UC-25 di kerangka (lihat D-21). |
-| UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja` | |
+| UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja` | Sejak D-26 (`37517ff`) turut menghitung dokumen manual KSBU (arsip.manual_arsip), ditandai "Penambahan Dokumen (KSBU)" |
 | UC-21 | Melihat Laporan Kinerja | PJ Kinerja | Laporan Kinerja → `/penanggung-jawab-kinerja/laporan-kinerja` | `GET /api/laporan/kinerja?scope=laporan_kinerja` | |
 | **M6 Administrasi Sistem** |||||
 | UC-22 | Mengelola Pengguna dan Penugasan Ketua Tim | Admin | Master User → `/admin/master-data/user` | `/api/users/**`, `/api/ketua-tim/**` | |
@@ -912,12 +912,12 @@ Halaman per peran: pegawai 13, ppk 10, ppspm 7, kasubag 10, PJ Kinerja 3, admin 
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 14:05, branch `fix/temuan-bab-v` setelah perbaikan Bagian D, termasuk D-24):
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 18:11, branch `fix/temuan-bab-v` setelah perbaikan Bagian D, termasuk D-26/T-5):
 - **112 berkas tes lulus dari 112**;
-- **1.152 kasus lulus, 1 dilewati, 0 gagal** (1.153 total);
-- durasi 35,32 detik;
+- **1.160 kasus lulus, 1 dilewati, 0 gagal** (1.161 total);
+- durasi 26,76 detik;
 - `tsc --noEmit` bersih;
-- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +4 berkas, +92 kasus;
+- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +4 berkas, +100 kasus;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`.
 
 **Tes integrasi** (`pnpm test:integration` = `vitest run --config vitest.integration.config.ts`, 27-09-2026, setelah D-20): **1 berkas, 3 kasus lulus**. Berkas `tests/integration/dokumen-transaksi-permintaan-fk.test.ts` menyambung ke PostgreSQL asli (bukan `db` yang di-mock) dan membuktikan FK D-20 menolak UUID yang tidak ada di master (kode `23503`); setiap kasus di dalam transaksi yang di-ROLLBACK. Folder `tests/integration/**` dikecualikan dari `pnpm test`, jadi angka Vitest di atas **tidak** memuat tes ini dan tetap sama sebelum/sesudah D-20. Butuh Postgres lokal jalan (lihat C.5).
@@ -930,7 +930,7 @@ Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perki
 | arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~318 |
 | storage (unggah, tertunda, akses file, pembersihan) | 26 | ~245 |
 | dokumen (submit, revisi, guard transisi, PATCH, checklist kelengkapan, pembersihan, master data) | 27 | ~257 |
-| laporan (kinerja, periode, filter) | 7 | 91 |
+| laporan (kinerja, periode, filter, manual KSBU) | 7 | ~98 |
 | auth (sesi, login, rate-limit, peran, navigasi) | 10 | 66 |
 | export | 1 | 19 |
 | utils | 3 | 19 |
@@ -1001,7 +1001,7 @@ Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/k
 | **Performance efficiency** | Perilaku waktu, kapasitas | Batas ZIP 500 dokumen, batas pembersihan 200, laporan kinerja maksimal 2000 baris, Activity Log maksimal 500 baris, unggah 5 MB | `document-zip.ts:71`, `pembersihan.ts:21`, `kinerja.ts`, `activity-log.ts` |
 | **Compatibility** | Ko-eksistensi / interoperabilitas | Berdiri sendiri; hasil ekspor ZIP/CSV bisa dipakai di aplikasi lain secara manual | §1 |
 | **Interaction capability (usability)** | Kemudahan dipelajari, operabilitas, perlindungan dari kesalahan, estetika | Formulir bertahap + checklist; halaman Bantuan; menu per peran; konfirmasi ketik-persis; guard perubahan belum disimpan; toast; tiga tema; peringatan dokumen tertahan | `aju.tsx`, `bantuan.tsx`, `navigation.ts`, `ConfirmDialog` |
-| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.152 tes unit lulus | §PB-2.2, PB-6.5, C.4 |
+| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.160 tes unit lulus | §PB-2.2, PB-6.5, C.4 |
 | **Security** | Kerahasiaan, integritas, non-repudiasi, akuntabilitas, autentisitas | Argon2id; sesi 8 jam dengan token hash; rate-limit login; peran dicek server; same-origin; URL lampiran HMAC; cek magic bytes; riwayat dokumen/berkas/audit | Lampiran E |
 | **Maintainability** | Modularitas, dapat diuji, dapat dimodifikasi | Lapisan route/lib/db; modul transisi terpusat; injeksi repository; Zod di setiap batas; 112 berkas tes | Lampiran B, C.4 |
 | **Flexibility (portability)** | Kemampuan instal, adaptabilitas | Docker PostgreSQL; berjalan di LAN tanpa internet; konfigurasi via `.env` | C.5 |
@@ -1047,7 +1047,7 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-23 | **✅ SELESAI `b4ee1a8`** (baru, dari audit D-3). 11 handler GET master data (`master-fungsi`, `master-kegiatan`, `master-komponen` +`$id`, `master-jenis` +`$id`, `master-kategori` +`$id`, `master-detail` +`$id`, `master-kelengkapan`) sebelumnya bertanda "Public read endpoint" dan bisa dibaca siapa pun di LAN tanpa login. Kini memakai `requireAnyLocalSession` (401 tanpa sesi; peran apa pun boleh, karena semua pemanggilnya sudah di halaman yang dijaga peran). Mutasi tetap ADMIN-only. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
 | D-24 | **✅ SELESAI `38f5900`.** `updateDokumenSchema` kini `.strict()` dan hanya berisi `lampiranUrls`, `nominalRealisasi`, `keteranganDetail`, `namaDokumen` — persis yang dikirim `edit.tsx` (Non-Material) dan `revisi.tsx` (Material, sebelum resubmit). `kegiatanId`, `fungsiId`, `komponenId`, `jenisPermintaanId`, `kategoriPermintaanId`, `detailPermintaanId`, `tahun`, `tanggal`, `judul` ditolak 400 sebelum dokumen dibaca. *Temuan asli:* **`PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
 | D-25 | **(baru, dari T-13) `updated_at` = "kapan baris terakhir ditulis", bukan murni "kapan status terakhir berubah".** Monitoring Dokumen Tim menghitung "lama tertahan" dari `updated_at` (`monitoring-dokumen-tim.tsx:84-85`, `daysSinceUpdate`) — ini benar untuk menunjukkan lama di PPK/PPSPM/revisi-belum-dikirim-ulang, TAPI kolom itu juga ter-update saat Pegawai mengedit lampiran/nominal di masa revisi tanpa mengubah status. Klaim "sejak perubahan status terakhir" perlu kalimat yang lebih presisi: "sejak dokumen terakhir ditulis (submit, aksi persetujuan, atau edit saat revisi)". | `src/routes/pegawai/monitoring-dokumen-tim.tsx:84-85,759-762` | R (dokumentasi) |
-| D-26 | **(baru, dari T-5) Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi.** `GET /api/laporan/kinerja` (sumber `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi`) hanya membaca `dokumen_transaksi`, tidak pernah `arsip.manual_arsip` — walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. **Keputusan Anda:** seharusnya ikut dihitung. Belum dikerjakan — butuh desain tambahan (mode "per pegawai" ambigu untuk baris manual karena hanya ada `created_by`/KSBU, bukan pengaju asli; dan kapan baris manual dianggap "terealisasi"). | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | S (klaim skripsi + fitur) |
+| D-26 | **✅ SELESAI `37517ff`.** `GET /api/laporan/kinerja` kini juga membaca `arsip.manual_arsip`, digabung dan diurutkan bersama `dokumen_transaksi` berdasarkan `updated_at`. Baris manual: `status='COMPLETED'` (dianggap terealisasi sejak diarsipkan), `sumber='MANUAL'`, `tahun` dari `tanggal` dokumen sendiri (bukan tahun anggaran berkas — konsisten dengan Q5), baris `DIMUSNAHKAN` dikecualikan. **Sengaja dibatasi** hanya untuk Monitoring Nominal Realisasi (PPK/PPSPM) — tidak untuk Laporan Kinerja PJ Kinerja, karena halaman itu membuka detail dokumen lewat endpoint yang tidak ada untuk `manual_arsip`. UI menandai baris manual "Penambahan Dokumen (KSBU)" di daftar dan dialog metadata, supaya tidak dikira melalui persetujuan PPK/PPSPM. *Temuan asli:* Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi, walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | R (selesai) |
 
 **Pertanyaan yang butuh keputusan Anda**
 

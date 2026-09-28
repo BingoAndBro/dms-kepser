@@ -1,6 +1,8 @@
 # Penjelasan Proyek: Repositori Dokumen Kegiatan — Penyimpanan, Persetujuan, dan Pemberkasan
 
-> **Versi**: disinkronkan dengan kode branch `migration/postgres-local`, commit HEAD `b6c3292` ("Add resubmit validation: kelengkapan lampiran >=1"), 27 September 2026. Versi sebelumnya: `penjelasan-proyek-aplikasi-lama.md` (commit `7927ca5`).
+> **Versi final**: disinkronkan dengan kode branch `migration/postgres-local`, commit HEAD `e6ba99c` (filter periode bersama + Bulanan, lampiran dokumen manual KSBU wajib dan bisa dibuka di laporan) ditambah perbaikan teks header Laporan Kinerja (D-27) dan pembersihan kode lama (D-16, D-9), 28 September 2026. Seluruh temuan di Bagian D sudah punya keputusan. Versi sebelumnya: `b6c3292` (27 September 2026) dan `penjelasan-proyek-aplikasi-lama.md` (commit `7927ca5`).
+>
+> Dokumen rancangan diagram yang menyertai dokumen ini: `rancangan-erd.md`, `rancangan-sequence-diagram.md`, `rancangan-behavioral-state-diagram.md` (folder yang sama).
 >
 > Dokumen ini menjelaskan proyek dari sisi **bisnis lebih dulu**, baru turun ke solusi teknis. Alurnya: *Permasalahan Bisnis Utama* → *masalah spesifik* → *solusi, use case, pengguna, keterkaitan*.
 >
@@ -17,10 +19,10 @@
 3. Peta Permasalahan Bisnis PB-1 s.d. PB-9 (beserta rinciannya)
 4. Keterkaitan antar-PB
 5. Peta Cepat: Masalah → Lokasi Kode
-- **A.** Changelog sejak `7927ca5`
+- **A.** Changelog sejak `7927ca5` (sampai `e6ba99c`)
 - **B.** Fakta untuk Bab IV (use case, transisi status, state berkas, ERD, sequence)
 - **C.** Fakta untuk Bab V (dependensi, struktur, ukuran kode, tes, deploy, halaman, ISO 25010)
-- **D.** Ketidakkonsistenan & pertanyaan terbuka
+- **D.** Temuan, keputusan, dan daftar keterbatasan sistem (K-1 s.d. K-9, bahan Bab V)
 - **Lampiran** teknis (stack, arsitektur, basis data, keamanan, UI, istilah usang)
 
 ---
@@ -60,8 +62,8 @@ Proses pertanggungjawaban dokumen di satker ini **masih manual dan berbasis kert
 | **PPK** | `PPK` | Validasi tahap pertama: meloloskan atau menolak dokumen. Menindaklanjuti penolakan PPSPM, dengan memperbaiki lalu mengirim ulang, atau mengembalikan ke pegawai. Memantau Nominal Realisasi. |
 | **PPSPM** | `PPSPM` | Persetujuan tahap akhir: menyetujui (dokumen selesai) atau menolak kembali ke PPK. Memantau Nominal Realisasi. |
 | **Kepala Sub Bagian Umum (KSBU)** | `KEPALA_SUB_BAGIAN_UMUM` (rute `/kasubag`) | Mengklasifikasikan dokumen selesai ke Berkas, menambahkan dokumen tanpa alur persetujuan, menutup berkas dengan Nomor SPM, membersihkan file berkas, dan mengelola Master Klasifikasi Dokumen (Cara Pembayaran). |
-| **Penanggung Jawab Kinerja** | `PENANGGUNG_JAWAB_KINERJA` | Melihat Laporan Kinerja (material dan non-material) dan Activity Log seluruh pengguna. |
-| **Admin** | `ADMIN` | Mengelola pengguna dan peran, penugasan Ketua Tim, data master, serta tema dan identitas aplikasi. Melihat Activity Log seluruh pengguna. |
+| **Penanggung Jawab Kinerja** | `PENANGGUNG_JAWAB_KINERJA` | Melihat Laporan Kinerja (material, non-material, dan dokumen tambahan KSBU) beserta detail dan lampirannya (read-only), serta Log Aktivitas seluruh pengguna. |
+| **Admin** | `ADMIN` | Mengelola pengguna dan peran, penugasan Ketua Tim, data master, serta tema dan identitas aplikasi. Melihat Log Aktivitas seluruh pengguna. |
 
 Aturan peran:
 
@@ -94,6 +96,8 @@ Aturan peran:
 > - **Tahun Anggaran pada berkas** masuk PB-6.1/6.2.
 > - **Halaman Bantuan** masuk Lampiran F.
 > - **Pembersihan unggahan tertunda** masuk PB-6.5 (baru).
+> - **Filter periode bersama (Bulanan/Triwulan/Tahunan/Seluruh/Kustom)** di semua halaman laporan masuk PB-7.1/7.2.
+> - **Dokumen tambahan KSBU di Laporan Kinerja & Nominal Realisasi (beserta lampirannya)** masuk PB-7.2 dan PB-8.3.
 
 ---
 
@@ -171,7 +175,7 @@ Aturan peran:
   - **PPK memperbaiki lalu mengirim ulang** setelah ditolak PPSPM (`/ppk/dokumen/$id/resubmit` → `POST /api/ppk/resubmit/$id`, aksi `RESUBMIT_PPK`): dokumen **langsung** ke "Menunggu PPSPM" tanpa mengulang antrean PPK.
   - **PPK mengembalikan ke pegawai** (`POST /api/ppk/kembalikan/$id`, aksi `KEMBALIKAN`): status tetap "Perlu Revisi", tetapi penanggung jawab perbaikan pindah dari PPK ke Pegawai. Catatan otomatis berbunyi "Dikembalikan ke pegawai oleh PPK. Alasan penolakan PPSPM: …" (`src/routes/api/ppk/kembalikan/$id.ts:14-23,76,82`).
 
-  Sebelum dikirim ulang, server memeriksa tiga hal (`validateResubmitRequirements`): nominal > 0 untuk material, minimal satu lampiran, dan kelengkapan wajib. Lampiran lama yang diganti baru dihapus **setelah** basis data berhasil diperbarui, dan hanya bila tidak dirujuk baris lain (`cleanupUnreferencedReplacedLocalAttachments`, dipanggil di `src/routes/api/dokumen.$id.ts:615` dan `src/routes/api/ppk/resubmit/$id.ts:357,539`).
+  Sebelum dikirim ulang, server memeriksa tiga hal (`validateResubmitRequirements`): nominal > 0 untuk material, minimal satu lampiran, dan kelengkapan wajib. Lampiran lama yang diganti baru dihapus **setelah** basis data berhasil diperbarui, dan hanya bila tidak dirujuk baris lain (`cleanupUnreferencedReplacedLocalAttachments`, dipanggil di `src/routes/api/dokumen.$id.ts:627` dan `src/routes/api/ppk/resubmit/$id.ts:376,558`).
 - **Use case.** Dokumen ditolak PPSPM karena salah kode akun. PPK membetulkannya sendiri lalu mengirim ulang tanpa membebani pegawai.
 - **Pengguna.** Pegawai, PPK.
 - **Keterkaitan.** Bergantung pada PB-2.3; tercatat di PB-3.
@@ -204,7 +208,7 @@ Aturan peran:
   | Aksi | Penulis |
   |---|---|
   | `DOKUMEN_LAMPIRAN_DIBERSIHKAN` | PB-9 |
-  | `DOKUMEN_DIHAPUS_PERMANEN` | Pegawai menghapus dokumen non-material miliknya, `src/routes/api/dokumen.$id.ts:792` |
+  | `DOKUMEN_DIHAPUS_PERMANEN` | Pegawai menghapus dokumen non-material miliknya, `src/routes/api/dokumen.$id.ts:804` |
   | `BERKAS_LAMPIRAN_DIBERSIHKAN` | PB-6.3, `src/lib/archive/berkas-arsip-physical-destruction.ts:713` |
 
 - **Pengguna.** Pemeriksa / pengembang lewat akses basis data. **Tidak ada halaman atau API yang membaca tabel ini**; `auditLog` hanya dipakai oleh tiga penulis di atas.
@@ -229,12 +233,12 @@ Aturan peran:
 
 ## PB-3.4 — Tidak ada pandangan aktivitas per pengguna
 
-- **Solusi.** Halaman **Activity Log** untuk enam peran, memakai komponen bersama `ActivityLogView.tsx` dan `GET /api/activity-log`, yang menggabungkan riwayat dokumen dan riwayat berkas (maksimal 500 baris).
+- **Solusi.** Halaman **Log Aktivitas** (label menu dulu "Activity Log", diganti di D-5; path tetap `/…/activity-log`) untuk enam peran, memakai komponen bersama `ActivityLogView.tsx` dan `GET /api/activity-log`, yang menggabungkan riwayat dokumen dan riwayat berkas (maksimal 500 baris).
   - **Admin dan PJ Kinerja** melihat semua pengguna (`GLOBAL_SCOPE_ROLES`, `src/routes/api/activity-log.ts:15`; `scope=all`, ditolak 403 untuk peran lain, `:65-69`).
   - Empat peran lainnya hanya melihat aktivitas sendiri.
   - Filter per pengguna, filter peran, dan pencarian berjalan **di klien** (`ActivityLogView.tsx:97-109`).
 - **Pengguna.** Semua peran untuk aktivitas sendiri; Admin dan PJ Kinerja untuk lintas pengguna.
-- **Perubahan dari rancangan lama.** Versi lama menyebut Admin melihat riwayat aktivitas di halaman Detail User. Halaman Master User (`src/routes/admin.master-data.user.tsx`) **tidak memuat riwayat aktivitas**; riwayat lintas pengguna kini ada di Activity Log dengan cakupan `all`, yang juga dibuka untuk PJ Kinerja.
+- **Perubahan dari rancangan lama.** Versi lama menyebut Admin melihat riwayat aktivitas di halaman Detail User. Halaman Master User (`src/routes/admin.master-data.user.tsx`) **tidak memuat riwayat aktivitas**; riwayat lintas pengguna kini ada di Log Aktivitas dengan cakupan `all`, yang juga dibuka untuk PJ Kinerja.
 
 ---
 
@@ -280,7 +284,7 @@ Aturan peran:
 
 - **Solusi.** **Master Klasifikasi Dokumen** berbentuk hierarki induk–anak (`arsip.master_klasifikasi_arsip.parent_id`, kode unik bila diisi). Hanya node daun yang bisa dipakai. Daftar pilihan disaring per **Tahun Anggaran** (`src/routes/api/kasubag/klasifikasi/index.ts:130-137,165-172`) oleh `berkas-klasifikasi-eligibility.ts`:
   - Cara Pembayaran yang berkasnya untuk TA tersebut sudah ditutup **tidak bisa dipilih lagi** pada TA yang sama.
-  - Induk yang semua anaknya tersaring ikut hilang (`filterKlasifikasiTreeForBerkasSelection`, `:129-174`).
+  - Induk yang semua anaknya tersaring ikut hilang (`filterKlasifikasiTreeForBerkasSelection`, `:119-166`).
 - **Pengguna.** KSBU mengelola dan memakai di `/kasubag/klasifikasi`.
 - **Keterkaitan.** Kunci pengelompokan di PB-6.
 
@@ -299,8 +303,8 @@ Aturan peran:
   | Status setelah diajukan | "Divalidasi PPK" → … → "Selesai" | langsung **"Tersimpan"** |
   | Masuk antrean PPK/PPSPM | ya | tidak |
   | Judul otomatis | `{nama daun} {tahun} {nama pengaju}` | `{nama dokumen} {tahun} {nama pengaju}` (`local-submit-write-bridge.ts:413`) |
-  | Boleh diubah pemilik | hanya saat "Perlu Revisi" untuk Pegawai | saat "Tersimpan" dan lampiran belum dibersihkan (`src/routes/api/dokumen.$id.ts:490-505`) |
-  | Boleh dihapus permanen | tidak | ya, bila "Tersimpan" dan tidak berada di berkas (`dokumen.$id.ts:675-800`) |
+  | Boleh diubah pemilik | hanya saat "Perlu Revisi" untuk Pegawai | saat "Tersimpan" dan lampiran belum dibersihkan (`src/routes/api/dokumen.$id.ts:504-520`) |
+  | Boleh dihapus permanen | tidak | ya, bila "Tersimpan" dan tidak berada di berkas (handler `DELETE`, `dokumen.$id.ts:687`) |
 
   Nama daun diturunkan berurutan: Detail → Kategori → Jenis → Komponen → Kegiatan (`resolveLocalSubmitLeafName`, `:458-502`).
 - **Keputusan perancangan.** Jalur non-material adalah **satu-satunya perpindahan status di luar modul transisi terpusat**. `buildLocalSubmitTransitionPlan` (`local-submit-write-bridge.ts:436-456`) menetapkan "Tersimpan" langsung dengan aksi riwayat `STORE`. Jalur material memanggil transisi `DRAFT --SUBMIT--> IN_PPK_VALIDATION`. Pada kedua jalur, baris dibuat sebagai `DRAFT` lalu status diperbarui **dalam transaksi yang sama** (`executeLocalSubmitWritePlan`, `:363-396`), sehingga status Draf tidak pernah terlihat di luar transaksi.
@@ -339,12 +343,14 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 - **Solusi.** Dua pintu masuk yang bermuara ke satu struktur:
   - **Pengklasifikasian Dokumen** (`/kasubag/inbox` → detail `/kasubag/dokumen/$id` → `POST /api/kasubag/dokumen/$id/archive`). Hanya untuk dokumen berstatus "Selesai" (`src/routes/api/kasubag/dokumen.$id.archive.ts:103`). Dokumen masuk sebagai item `WORKFLOW`, dan statusnya tidak berubah.
-  - **Penambahan Dokumen** (`/kasubag/penambahan-arsip`). Entri manual KSBU tanpa alur persetujuan, berisi Fungsi → Kegiatan → Komponen → Nama Dokumen, tanggal, Cara Pembayaran, TA, nominal, keterangan wajib, dan lampiran opsional. Dokumen masuk sebagai item `MANUAL`.
+  - **Penambahan Dokumen** (`/kasubag/penambahan-arsip`). Entri manual KSBU tanpa alur persetujuan, berisi Fungsi → Kegiatan → Komponen → Nama Dokumen, tanggal, Cara Pembayaran, TA, nominal, keterangan wajib, dan **minimal 1 lampiran (maksimal 5)**. Dokumen masuk sebagai item `MANUAL`.
+    - Aturan "minimal 1 lampiran" sama dengan jalur pengajuan (PB-1.3) dan ditegakkan dua lapis: formulir (`validateAttachmentRows`, `src/routes/kasubag/penambahan-arsip.tsx:2430`, dicek saat "Lanjut" di langkah Berkas Pendukung dan saat Simpan) dan server (`createManualArsipSchema`, `src/lib/schemas/manual-arsip.ts:213-223`, pesan `MANUAL_ARSIP_ATTACHMENT_REQUIRED_MESSAGE` = "Minimal 1 lampiran wajib diunggah"). Pemeriksaan lampiran dijalankan setelah pemeriksaan field lain, sehingga kesalahan field tetap dilaporkan lebih dulu.
+    - Kolom unggah memakai sistem **unggahan tertunda** yang sama dengan Ajukan/Revisi (PB-6.5): file langsung naik ke area tertunda saat dipilih (`uploadPendingFile`); file yang diganti atau dihapus langsung dibuang (`requestPendingUploadCleanup`); sisa file tertunda dibuang saat halaman ditinggalkan (`useDiscardPendingUploadsOnLeave`); saat Simpan, server memindahkan file ke lokasi resmi di dalam transaksi pembuatan (`prepareManualArsipPendingAttachments`/`moveManualArsipPendingAttachments`, `src/lib/manual-arsip.ts:244-356`).
 
   KSBU memilih **Cara Pembayaran dan Tahun Anggaran**. TA dipilih di formulir, **tidak diturunkan dari tanggal dokumen**:
   - skema `tahun_anggaran` 2000–2100 di `dokumen.$id.archive.ts:65`;
   - pilihan UI dari tahun berjalan +2 sampai −5 (`src/lib/utils/tahun.ts:5-11`);
-  - bawaan formulir manual adalah tahun berjalan (`src/routes/kasubag/penambahan-arsip.tsx:230`).
+  - bawaan formulir manual adalah tahun berjalan (`src/routes/kasubag/penambahan-arsip.tsx:222`).
 
   Aturan get-or-create (`getOrCreateOpenBerkasForKlasifikasi`, `src/lib/archive/berkas-arsip-service.ts:249-272`):
   - belum ada berkas untuk (Cara Pembayaran, TA) → berkas terbuka baru dibuat;
@@ -355,6 +361,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 - **Use case.** Lima honor SAKERNAS yang selesai ditambah satu bukti bayar service AC (manual) masuk ke berkas "Honor — TA 2026" yang masih terbuka.
 - **Pengguna.** KSBU.
 - **Perubahan dari rancangan lama.** Aturan lama "satu berkas **terbuka** per Cara Pembayaran" (partial unique index `berkas_arsip_open_klasifikasi_unique`) diganti "satu berkas per Cara Pembayaran **per Tahun Anggaran**", terbuka maupun tertutup (migrasi `0018_berkas_tahun_anggaran.sql`, commit `56c6a6d`). Konsekuensinya, setelah ditutup, Cara Pembayaran itu **baru bisa dipakai lagi pada TA berikutnya**. Berkas lama diisi TA dari tahun `created_at` zona Asia/Jakarta.
+- **Perubahan dari rancangan lama.** Lampiran dokumen manual dulu opsional; sejak `e6ba99c` minimal 1 lampiran wajib. Dokumen manual lama yang dibuat tanpa lampiran tetap ada dan tampil "Belum ada lampiran" di detailnya.
 
 ## PB-6.2 — Berkas tidak pernah "ditutup" dengan Nomor SPM
 
@@ -395,7 +402,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 ## PB-6.5 — Unggahan yang ditinggalkan memenuhi disk (baru)
 
 - **Proses sekarang.** Tidak relevan di proses kertas. Masalah ini muncul karena file diunggah **sebelum** formulir disimpan, sehingga formulir yang ditinggalkan meninggalkan file tanpa pemilik.
-- **Solusi** (commit `fc59b44`). File hasil unggahan disimpan di area **tertunda** dan baru dipindah ke lokasi resmi saat pengajuan atau penyimpanan berhasil. Pemindahan terjadi di dalam transaksi; bila gagal, file dikembalikan (`moveSubmitFilesOrRollback`, `src/routes/api/dokumen/submit.ts:321-359`). Area tertunda dibersihkan tiga cara:
+- **Solusi** (commit `fc59b44`). File hasil unggahan disimpan di area **tertunda** dan baru dipindah ke lokasi resmi saat pengajuan atau penyimpanan berhasil. Pemindahan terjadi di dalam transaksi; bila gagal, file dikembalikan (`moveSubmitFilesOrRollback`, `src/routes/api/dokumen/submit.ts:243-283`). Area tertunda dibersihkan tiga cara:
 
   | Cara | Mekanisme |
   |---|---|
@@ -403,6 +410,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
   | Server, otomatis | Setelah setiap unggahan, paling sering sejam sekali per proses (`upload.ts:139`), server menghapus file tertunda berumur > 24 jam yang tidak dirujuk (`src/lib/storage/pending-upload-sweeper.ts`). |
   | Manual atau terjadwal | `pnpm storage:sweep-pending` (`src/scripts/sweep-pending-uploads.ts`). |
 
+  Pola ini dipakai di **semua kolom unggah** aplikasi: Ajukan Dokumen (`aju.tsx:200`), komponen `AttachmentEditor` (`AttachmentEditor.tsx:242`) yang dipakai Ubah Dokumen, Revisi Pegawai, dan Kirim Ulang PPK, serta Penambahan Dokumen KSBU (`penambahan-arsip.tsx:820`).
 - **Pengguna.** Sistem (otomatis); operator server (skrip).
 
 ## Tabel penamaan (label tampilan vs identifier internal)
@@ -430,25 +438,48 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
   - **Laporan Saya** (`/pegawai/laporan/saya`): dokumen milik sendiri.
   - **Laporan Kegiatan** (`/pegawai/laporan/kegiatan`, grup PJ Kegiatan): dokumen **final** (Selesai atau Tersimpan) dari semua kegiatan yang dipimpin (`scope=final`, `src/lib/laporan/kegiatan-scope.ts:12-15`).
 
-  Keduanya punya filter bertingkat dan ekspor ZIP. Server hanya mengembalikan dokumen dari kegiatan milik penugasan pemanggil (`src/routes/api/laporan/kegiatan.ts:59-68`).
+  Keduanya punya filter bertingkat, **filter periode**, dan ekspor ZIP. Server hanya mengembalikan dokumen dari kegiatan milik penugasan pemanggil (`src/routes/api/laporan/kegiatan.ts:59-68`).
+
+  **Filter periode** memakai komponen bersama `PeriodeSelector` (`src/components/laporan/PeriodeSelector.tsx`), yang sama dengan Nominal Realisasi dan Laporan Kinerja (PB-7.2). Kedua halaman memuat semua dokumen sekali, lalu menyaring di browser dengan `isTanggalInPeriode` (`src/lib/laporan/periode.ts:121`) berdasarkan tanggal dokumen. Periode bawaan:
+  - **Laporan Saya: Bulanan**, yaitu bulan berjalan (`defaultPeriode('BULANAN')`, `src/routes/pegawai/laporan/saya.tsx:77`);
+  - **Laporan Kegiatan: Triwulan**, yaitu triwulan berjalan (`defaultPeriode('TRIWULAN')`, `src/routes/pegawai/laporan/kegiatan.tsx:154`). Periode berlaku juga saat membuka detail satu kegiatan.
+
+  Input "Mulai/Sampai Tanggal" di Filter Lanjutan daftar kini digantikan filter periode (rentang bebas tetap tersedia lewat mode Kustom). Ekspor ZIP Laporan Saya mengikuti periode yang aktif.
 - **Pengguna.** Pegawai; Ketua Tim.
 
 ## PB-7.2 — Tidak ada rekap realisasi untuk pihak berwenang
 
-- **Solusi.** Satu tampilan **`MonitoringRealisasiView.tsx`** dipakai tiga halaman dengan drill-down Fungsi → Kegiatan → Komponen → Dokumen (atau per pegawai), filter periode (Triwulan, Tahunan, Semua, Kustom), dan state filter di URL:
+- **Solusi.** Satu tampilan **`MonitoringRealisasiView.tsx`** dipakai tiga halaman dengan drill-down Fungsi → Kegiatan → Komponen → Dokumen (atau per pegawai), filter periode, dan state filter di URL:
 
   | Halaman | Pengguna | Isi (`GET /api/laporan/kinerja`) |
   |---|---|---|
-  | Nominal Realisasi `/ppk/monitoring-realisasi` | PPK | material "Selesai" dengan komponen (`kinerja.ts:168-172`) |
+  | Nominal Realisasi `/ppk/monitoring-realisasi` | PPK | material "Selesai" dengan komponen (`kinerja.ts:177-181`) **+ dokumen tambahan KSBU** (`arsip.manual_arsip`, `:247-273`) |
   | Nominal Realisasi `/ppspm/monitoring-realisasi` | PPSPM | sama |
-  | Laporan Kinerja `/penanggung-jawab-kinerja/laporan-kinerja` | PJ Kinerja | di atas **ditambah** non-material "Tersimpan" yang lampirannya belum dibersihkan (`scope=laporan_kinerja`, `:174-184`) |
+  | Laporan Kinerja `/penanggung-jawab-kinerja/laporan-kinerja` | PJ Kinerja | di atas **ditambah** non-material "Tersimpan" yang lampirannya belum dibersihkan (`scope=laporan_kinerja`, `:183-197`) |
+
+  **Filter periode** (`PeriodeSelector`, dipakai bersama PB-7.1): **Bulanan**, Triwulan, Tahunan, Seluruh Periode, dan Kustom. Mode Bulanan menghitung hari terakhir bulan dengan benar, termasuk Februari tahun kabisat (`resolvePeriodeRange`, `src/lib/laporan/periode.ts`). Bawaan ketiga halaman ini tetap **Triwulan berjalan** (`normalizePeriodeSearch`, `src/components/kinerja/monitoringRealisasiNavigation.ts:69`). Periode disimpan di URL (`periode`, `tahun`, `triwulan`, `bulan`) dan dikirim ke server sebagai `start_date`/`end_date`.
 
   Aturan cakupan:
-  - `scope=laporan_kinerja` **hanya boleh dipakai PJ Kinerja**; peran lain mendapat 403 (`kinerja.ts:121-127`, commit `c40c469`).
-  - Dokumen dari berkas yang file-nya sudah dibersihkan **dikeluarkan** (`:141-152`).
-  - **Dokumen manual KSBU tidak ikut dihitung.** API hanya membaca `dokumen_transaksi`; nominal manual hanya dijumlahkan di total berkas (`src/lib/archive/berkas-arsip-read-model.ts:375,798`).
-  - Maksimal 2000 baris per permintaan.
+  - `scope=laporan_kinerja` **hanya boleh dipakai PJ Kinerja**; peran lain mendapat 403 (`kinerja.ts:134-136`, commit `c40c469`).
+  - Dokumen dari berkas yang file-nya sudah dibersihkan **dikeluarkan** (`:150-167`); dokumen manual yang `DIMUSNAHKAN` juga dikeluarkan.
+  - **Dokumen tambahan KSBU ikut dihitung di ketiga halaman** (D-26, `37517ff`; diperluas ke Laporan Kinerja di `e6ba99c`). Dokumen manual dianggap "Selesai" sejak diarsipkan, diberi `sumber = 'MANUAL'`, dan di tabel diberi label "· Penambahan Dokumen (KSBU)" supaya tidak dikira melewati persetujuan PPK/PPSPM.
+  - Maksimal 2000 baris per permintaan; bila terlampaui, muncul peringatan agar periode dipersempit.
+  - Header halaman menampilkan catatan cakupan sesuai halaman (D-27): Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU…", Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU…".
+
+  **Detail dan lampiran dokumen** (sejak `e6ba99c`). Mengklik dokumen di ketiga halaman membuka detail beserta lampiran yang bisa di-**Preview** dan di-**Unduh**:
+  - dokumen alur pengajuan → `DokumenDetailDialog` + `AttachmentViewer` (sama dengan halaman laporan lain);
+  - dokumen tambahan KSBU → `ManualArsipDetailDialog` + `ManualArsipAttachmentViewer` (`src/components/arsip/`), yang meniru tampilan dan perilaku `AttachmentViewer` (kartu lampiran, tombol Preview/Unduh, notifikasi, modal pratinjau PDF). Datanya diambil dari endpoint **read-only** `/api/laporan/manual-arsip/$id` (+ `/attachments/$attachmentId/{preview,download}`); lihat PB-8.3.
+
+  Sebelumnya Nominal Realisasi sengaja hanya menampilkan metadata (tanpa file), dan dokumen manual di Laporan Kinerja hanya menampilkan metadata. Aturan "metadata saja" itu dicabut atas keputusan pemilik proyek.
+
+  **Klaim cakupan Laporan Kinerja untuk skripsi** (diputuskan, klaim terbatas): *"Seluruh dokumen final — dokumen material berstatus Selesai, dokumen non-material berstatus Tersimpan, dan dokumen tambahan KSBU — yang masih berlaku tercakup dalam Laporan Kinerja."* Yang **tidak** tercakup, dan harus disebut bila klaim ini dipakai:
+  1. dokumen yang belum final (masih di PPK/PPSPM, perlu revisi);
+  2. dokumen alur pengajuan yang berkasnya sudah dibersihkan (dimusnahkan), dan dokumen tambahan KSBU yang dimusnahkan;
+  3. dokumen non-material yang lampirannya sudah dibersihkan (PB-9);
+  4. dokumen material lama tanpa Komponen (data sebelum kolom Komponen wajib);
+  5. baris ke-2001 dan seterusnya dalam satu periode (batas 2000 baris, disertai peringatan).
 - **Pengguna.** PPK, PPSPM, PJ Kinerja. Admin tidak.
+- **Perubahan dari rancangan lama.** Dokumen manual KSBU dulu tidak dihitung sama sekali (hanya dijumlahkan di total berkas, `berkas-arsip-read-model.ts`); filter periode dulu tidak punya mode Bulanan dan hanya ada di tiga halaman ini.
 
 ## PB-7.3 — Ketua Tim tidak tahu dokumen timnya tertahan di mana (baru)
 
@@ -483,7 +514,7 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
   Setiap pengguna bisa mengganti kata sandi dan foto profilnya di `/profile`.
 
-  **Login memakai username atau NIP** (`or(eq(users.username, …), eq(users.nipNrp, …))`, `src/lib/auth/local-auth-service.ts:155`). Email kini opsional dan bukan identitas login (migrasi `0017_username_login_identity.sql`).
+  **Login memakai username atau NIP** (`or(eq(users.username, …), eq(users.nipNrp, …))`, `src/lib/auth/local-auth-service.ts:150`). Email kini opsional dan bukan identitas login (migrasi `0017_username_login_identity.sql`).
 
   Rincian keamanan (Lampiran E):
   - kata sandi di-hash **Argon2id**;
@@ -498,13 +529,20 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 - **Solusi.** File disimpan di luar direktori publik. Lampiran dokumen dibuka dengan meminta **URL bertanda tangan HMAC-SHA256** yang terikat pada pengguna, sesi, dokumen, dan indeks lampiran. Masa berlakunya **15 menit untuk pratinjau** dan **1 jam untuk unduh** (`src/lib/storage/document-file-access.ts:56-57,61-135`).
 
-  Hak baca diperiksa ulang pada setiap permintaan (`canSessionReadDocument`, `:344-375`). Yang berhak:
+  Hak baca diperiksa ulang pada setiap permintaan (`canSessionReadDocument`, `:344-383`; aturan yang sama untuk detail dokumen di `canSessionReadDokumen`, `src/routes/api/dokumen.$id.ts:58`). Yang berhak:
   - pemilik dokumen;
-  - PPK dan PPSPM untuk status tertentu;
+  - PPK dan PPSPM untuk status tertentu (termasuk "Selesai");
   - KSBU untuk dokumen "Selesai";
+  - **PJ Kinerja untuk dokumen "Selesai" dan "Tersimpan"** (baca saja; sejak `e6ba99c`, `document-file-access.ts:359-365`, `dokumen.$id.ts:89-93`). Sebelumnya akun yang hanya berperan PJ Kinerja ditolak (403) saat membuka detail atau lampiran dokumen di Laporan Kinerja;
   - Ketua Tim untuk dokumen non-Draf di kegiatannya.
 
-  Admin murni ditolak. Respons 410 dikirim bila lampiran sudah dibersihkan ("Data file sudah dibersihkan") atau berkasnya sudah dibersihkan ("Data file sudah dimusnahkan"). File di dalam berkas dan dokumen manual dibuka lewat rute KSBU yang memeriksa sesi dan peran, **tanpa** token HMAC.
+  Admin murni ditolak. Respons 410 dikirim bila lampiran sudah dibersihkan ("Data file sudah dibersihkan") atau berkasnya sudah dibersihkan ("Data file sudah dimusnahkan").
+
+  **File di luar lampiran dokumen alur** dibuka lewat rute yang memeriksa sesi dan peran, **tanpa** token HMAC:
+  - file di dalam berkas: rute KSBU (`requireBerkasArsipApiSession`);
+  - lampiran dokumen tambahan KSBU, dua pintu:
+    - `/api/kasubag/manual-arsip/**`: baca dan tulis, hanya KSBU (`requireManualArsipApiSession`, `src/lib/manual-arsip.ts:197`);
+    - `/api/laporan/manual-arsip/$id` (+ `/attachments/$attachmentId/{preview,download}`): **baca saja**, untuk PJ Kinerja, PPK, PPSPM, dan KSBU, yaitu peran yang melihat dokumen itu di laporan (`requireLaporanManualArsipSession`, `:215`). Dokumen yang `DIMUSNAHKAN` dijawab 404 (detail) atau 410 (file).
 - **Unggahan.** Maksimal **5 MB**. Server memeriksa ekstensi (pdf, doc, docx, xls, xlsx, jpg, jpeg, png), MIME yang dilaporkan, kecocokan ekstensi dengan MIME, dan **tanda tangan isi file** (magic bytes) (`src/lib/storage/local-upload.ts:107-140,229-259`; `src/lib/upload/document-upload-policy.ts`).
 - **Pengguna.** Semua aktor yang berhak.
 
@@ -556,7 +594,8 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
                     ▼
                PB-7 Pelaporan: Laporan Saya · Laporan Kegiatan · Monitoring Dokumen Tim ·
                Nominal Realisasi (PPK/PPSPM) · Laporan Kinerja (PJ Kinerja)
-               — tanpa dokumen manual KSBU, tanpa berkas yang file-nya dibersihkan
+               — filter periode bersama; termasuk dokumen tambahan KSBU (+ lampirannya);
+                 tanpa berkas yang file-nya dibersihkan
 
  Aplikasi mandiri: TIDAK bertukar data dengan KipApp, SAKIP, SPIDER, Drive, atau aplikasi arsip.
 ```
@@ -576,18 +615,20 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 | Persetujuan PPSPM | `src/routes/ppspm/*`, `src/routes/api/ppspm/dokumen/$id/{approve,reject}.ts` |
 | Pemberkasan | `src/lib/archive/berkas-arsip-service.ts`, `berkas-arsip-read-model.ts`, `berkas-klasifikasi-eligibility.ts`, `src/routes/api/kasubag/dokumen.$id.archive.ts`, `src/routes/api/kasubag/berkas/**`, `src/routes/kasubag/berkas/**` |
 | Siklus & pembersihan berkas | `src/lib/constants/archive-status.ts`, `src/lib/archive/retention.ts`, `berkas-arsip-physical-destruction.ts`, `src/routes/api/kasubag/berkas/$id/lifecycle.ts`, `src/routes/kasubag/pembersihan/index.tsx` |
-| Penambahan dokumen manual | `src/lib/manual-arsip.ts`, `src/lib/schemas/manual-arsip.ts`, `src/lib/storage/manual-arsip-pending-attachments.ts`, `src/routes/api/kasubag/manual-arsip/*`, `src/routes/kasubag/penambahan-arsip.tsx` |
+| Penambahan dokumen manual | `src/lib/manual-arsip.ts`, `src/lib/schemas/manual-arsip.ts`, `src/lib/storage/manual-arsip-pending-attachments.ts`, `src/routes/api/kasubag/manual-arsip/*`, `src/routes/kasubag/penambahan-arsip.tsx`, `src/components/arsip/ManualArsipAttachments.tsx` |
+| Dokumen manual di laporan (read-only) | `src/routes/api/laporan/manual-arsip.$id*.ts`, `src/components/arsip/{ManualArsipDetailDialog,ManualArsipAttachmentViewer}.tsx` |
 | Tahun anggaran | `drizzle/0018_berkas_tahun_anggaran.sql`, `src/lib/utils/tahun.ts`, `src/routes/api/kasubag/klasifikasi/index.ts` |
 | Ekspor ZIP | `src/lib/export/document-zip.ts`, `laporan-zip-entries.ts`, `src/routes/api/kasubag/berkas/$id/export-zip.ts`, `src/routes/api/laporan/{saya,kegiatan}.export-zip.ts`, `src/components/laporan/ExportZipDialog.tsx` |
 | Data master | `src/lib/master-data/*`, `src/routes/admin.master-data.*.tsx`, `src/routes/api/master-*.ts` |
 | Ketua Tim | `src/db/schema/master/ketua-tim-assignments.ts`, `src/lib/schemas/ketua-tim.ts`, `src/routes/api/ketua-tim/*`, `src/routes/api/users/me/ketua-tim.ts` |
 | Pembersihan non-material | `src/lib/dokumen/pembersihan.ts`, `pembersihan-service.ts`, `src/routes/api/pembersihan-dokumen*.ts`, `src/routes/pegawai/pembersihan-dokumen.tsx` |
-| Monitoring Realisasi & Laporan Kinerja | `src/components/kinerja/MonitoringRealisasiView.tsx`, `src/lib/laporan/{monitoring-rows,periode}.ts`, `src/routes/api/laporan/kinerja.ts` |
-| Laporan pegawai & Monitoring Dokumen Tim | `src/routes/pegawai/laporan/*`, `src/routes/pegawai/monitoring-dokumen-tim.tsx`, `src/lib/laporan/kegiatan-scope.ts`, `src/routes/api/laporan/{saya,kegiatan}.ts`, `src/components/laporan/{HierarchicalFilter,FilterToolbar}.tsx` |
+| Monitoring Realisasi & Laporan Kinerja | `src/components/kinerja/{MonitoringRealisasiView.tsx,monitoringRealisasiNavigation.ts}`, `src/lib/laporan/{monitoring-rows,periode}.ts`, `src/routes/api/laporan/kinerja.ts` |
+| Filter periode (bersama) | `src/lib/laporan/periode.ts`, `src/components/laporan/PeriodeSelector.tsx` |
+| Laporan pegawai & Monitoring Dokumen Tim | `src/routes/pegawai/laporan/*`, `src/routes/pegawai/monitoring-dokumen-tim.tsx`, `src/lib/laporan/kegiatan-scope.ts`, `src/routes/api/laporan/{saya,kegiatan}.ts`, `src/components/laporan/{HierarchicalFilter,FilterToolbar,PeriodeSelector}.tsx` |
 | Auth & sesi | `src/lib/auth/*` (`local-auth-service.ts`, `session-*.ts`, `login-rate-limit.ts`, `password.ts`), `src/routes/api/auth/*`, `src/db/schema/auth/*` |
 | Peran & navigasi | `src/lib/auth/local-server-auth.ts`, `src/lib/users/role-assignment.ts`, `src/lib/guards.ts`, `src/config/navigation.ts`, `src/components/layout/AppSidebar.tsx` |
 | Same-origin | `src/lib/security/same-origin.ts` |
-| Penyimpanan & akses file | `src/lib/storage/*`, `src/lib/upload/document-upload-policy.ts`, `src/routes/api/upload.ts`, `src/routes/api/files/access.ts`, `src/routes/api/dokumen/{preview,download}-url.ts` |
+| Penyimpanan & akses file | `src/lib/storage/*` (hak baca: `document-file-access.ts`), `src/lib/upload/document-upload-policy.ts`, `src/routes/api/upload.ts`, `src/routes/api/files/access.ts`, `src/routes/api/dokumen/{preview,download}-url.ts`, `src/components/dokumen/{AttachmentViewer,DokumenDetailDialog}.tsx` |
 | Unggahan tertunda | `src/hooks/useDiscardPendingUploadsOnLeave.ts`, `src/lib/storage/pending-upload-*.ts`, `src/scripts/sweep-pending-uploads.ts` |
 | Jejak audit | `src/db/schema/dokumen/log-aktivitas.ts`, `src/db/schema/audit/audit-log.ts`, `src/db/schema/arsip/berkas-arsip.ts`, `src/routes/api/activity-log.ts`, `src/components/activity-log/ActivityLogView.tsx` |
 | Tema, identitas, bantuan | `src/db/schema/app/app-settings.ts`, `src/lib/schemas/settings.ts`, `src/routes/api/settings/*`, `src/routes/admin.settings.tsx`, `src/routes/bantuan.tsx` |
@@ -596,11 +637,11 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 # A. Changelog sejak `7927ca5`
 
-41 commit; 182 berkas di `src/` + `drizzle/` berubah (+4.632 / −5.348 baris). Commit `1a09093`–`cf4c5ce` hanya berisi diagram dan dokumen.
+Sampai `b6c3292`: 41 commit; 182 berkas di `src/` + `drizzle/` berubah (+4.632 / −5.348 baris). Commit `1a09093`–`cf4c5ce` hanya berisi diagram dan dokumen. Perubahan setelahnya ada di tabel lanjutan (baris 20–36).
 
 | # | Dulu (`7927ca5`) | Sekarang (`b6c3292`) | Bukti |
 |---|---|---|---|
-| 1 | Login dengan **email** | Login dengan **username atau NIP**; email opsional, tidak unik | `drizzle/0017_username_login_identity.sql`; `local-auth-service.ts:155`; commit `80fb6d3` |
+| 1 | Login dengan **email** | Login dengan **username atau NIP**; email opsional, tidak unik | `drizzle/0017_username_login_identity.sql`; `local-auth-service.ts:150`; commit `80fb6d3` |
 | 2 | Satu berkas **terbuka** per Cara Pembayaran (partial unique index) | Satu berkas per **(Cara Pembayaran, Tahun Anggaran)**, terbuka maupun tertutup; TA dipilih KSBU | `drizzle/0018_berkas_tahun_anggaran.sql`; `berkas-arsip.ts:60-63`; commit `56c6a6d` |
 | 3 | Master Jenis Dokumen ada (tidak dipakai) | Tabel, kolom `dokumen_transaksi.jenis_dokumen_id`, rute, dan halaman admin dihapus | `drizzle/0019_drop_master_jenis_dokumen.sql`; commit `3834a95` |
 | 4 | `PATCH /api/dokumen/$id/nominal` | Dihapus | commit `d1f147e` |
@@ -620,6 +661,28 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 | 18 | Kode mati: `RoleSwitcher.tsx`, `UserMenu.tsx`, `StatsBento.tsx`, `DokumenFormContext.tsx`, `dokumen-form-reducer.ts`, `KinerjaPagePrimitives.tsx`, `ui/avatar.tsx`, `ui/card.tsx`, `src/db/index.ts`, `src/lib/db/*`, `lib/constants/{env,index,tables}.ts` | Dihapus | commit `6a1b158`, `d067410`, `630f9ae`, `34c8c0a`, `d61214d` |
 | 19 | *(koreksi dokumen, bukan perubahan kode)* Versi lama menyebut hanya Admin yang melihat Activity Log lintas pengguna | Admin **dan PJ Kinerja** (`scope=all`); sudah begitu sejak `7927ca5` | `activity-log.ts:15` di `7927ca5` dan HEAD |
 
+**Lanjutan: perubahan sejak `b6c3292` sampai `e6ba99c`** (perbaikan temuan Bagian D dan fitur laporan terakhir)
+
+| # | Dulu | Sekarang | Bukti |
+|---|---|---|---|
+| 20 | Checklist kelengkapan di revisi Pegawai dan kirim ulang PPK memakai pencocokan bertingkat | Satu fungsi bersama exact-match 6 kolom, sama dengan server (D-1) | `src/lib/kelengkapan-match.ts`; commit `69f7fbe` |
+| 21 | Nominal bisa diubah tanpa cek > 0 lewat PATCH | Material harus > 0, Non-Material menolak nominal (D-2) | `validateNominalUpdate`; commit `f26ee7f` |
+| 22 | `GET /api/kasubag/klasifikasi` dan 11 GET data master bisa dibaca tanpa login | Wajib sesi (+ peran KSBU untuk klasifikasi) (D-3, D-23) | commit `3a34192`, `b4ee1a8` |
+| 23 | Menu "Settings" tanpa tujuan di 5 peran; label "Activity Log" | Menu itu dihapus; Admin: "Pengaturan Aplikasi"; semua peran: "Log Aktivitas" (D-5) | `src/config/navigation.ts`; commit `e4abe5a` |
+| 24 | `is_ketua_tim` mengikuti klaim pengaju; PATCH dokumen menerima metadata bebas | `is_ketua_tim` ditentukan server saat submit dan dikunci; PATCH `.strict()` hanya menerima field yang dipakai UI (D-12, D-24) | commit `df8ea51`, `d328ad7`, `38f5900` |
+| 25 | Transisi `KEMBALIKAN` tanpa tes unit | Seluruh 8 transisi punya tes unit (D-14) | `tests/fsm.test.ts`; commit `89a93bd` |
+| 26 | Label "Jenis Dokumen" untuk karakteristik; pesan berkas tertutup tanpa TA | "Karakteristik"; pesan menyebut TA (D-17, D-18) | commit `ae966d2` |
+| 27 | `jenis/kategori/detail_permintaan_id` tanpa FK | FK ke master masing-masing, migrasi `0020` + tes integrasi (D-20) | `drizzle/0020_dokumen_transaksi_permintaan_fk.sql`; commit `8816524` |
+| 28 | Dokumen tambahan KSBU tidak masuk Nominal Realisasi | Masuk Nominal Realisasi dengan label "Penambahan Dokumen (KSBU)" (D-26/T-5) | `kinerja.ts`; commit `37517ff` |
+| 29 | Kata sandi di halaman login tidak bisa dilihat | Tombol lihat/sembunyikan kata sandi | `src/routes/login.tsx:32,174-191`; commit `19e1b2a` |
+| 30 | Filter periode (Triwulan/Tahunan/Semua/Kustom) hanya di Nominal Realisasi & Laporan Kinerja | Komponen bersama `PeriodeSelector` + mode **Bulanan**; dipakai juga Laporan Saya (bawaan Bulanan) dan Laporan Kegiatan (bawaan Triwulan) | `periode.ts`, `PeriodeSelector.tsx`; commit `e6ba99c` |
+| 31 | Laporan Kinerja tanpa dokumen tambahan KSBU; Nominal Realisasi hanya metadata; detail dokumen manual tanpa lampiran | Laporan Kinerja memuat dokumen tambahan KSBU; ketiga halaman membuka detail + lampiran (Preview/Unduh) untuk semua dokumen; endpoint read-only `/api/laporan/manual-arsip/**` | `ManualArsipDetailDialog.tsx`, `ManualArsipAttachmentViewer.tsx`; commit `e6ba99c` |
+| 32 | Akun yang hanya PJ Kinerja ditolak (403) saat membuka detail/lampiran dokumen alur | PJ Kinerja boleh membaca dokumen "Selesai" dan "Tersimpan" | `document-file-access.ts:359-365`, `dokumen.$id.ts:89-93`; commit `e6ba99c` |
+| 33 | Lampiran dokumen manual KSBU opsional | Minimal 1 lampiran, ditegakkan di formulir dan server | `schemas/manual-arsip.ts:213-223`; commit `e6ba99c` |
+| 34 | Catatan header Laporan Kinerja "Hanya dokumen material berstatus Selesai…" (tidak sesuai isi) | Catatan cakupan berbeda untuk Nominal Realisasi dan Laporan Kinerja (D-27) | `MonitoringRealisasiView.tsx` (`ScopeNoteContext`); commit setelah `e6ba99c` |
+| 35 | Kode mati: rute `rename-pending`, cabang dry-run submit, cabang `MULTIPLE_OPEN_BERKAS`, tipe `AppUser`/`AppSession`, rute pengalih `/dokumen/*` | Dihapus; tombol dashboard Pegawai langsung ke `/pegawai/dokumen/aju` (D-16 Golongan 1) | commit setelah `e6ba99c` |
+| 36 | Kode "Ingat saya" 30 hari yang tidak terjangkau dari UI | Dihapus; semua sesi 8 jam; kolom `remember_me` tetap di skema (D-9) | `src/lib/auth/*`; commit setelah `e6ba99c` |
+
 ---
 
 # B. Fakta untuk Bab IV
@@ -631,7 +694,7 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC), **+1 UC baru diputuskan (Q1) →
 | UC | Nama | Aktor | Menu (label → path) | Endpoint utama | Catatan kode |
 |---|---|---|---|---|---|
 | **M1 Akses dan Akun** |||||
-| UC-01 | Login | Semua | `/login` | `POST /api/auth/login` | **Username/NIP**, bukan email |
+| UC-01 | Login | Semua | `/login` | `POST /api/auth/login` | **Username/NIP**, bukan email; tombol lihat/sembunyikan kata sandi (`19e1b2a`) |
 | UC-02 | Logout | Semua | header | `POST /api/auth/logout` | |
 | UC-03 | Mengelola Profil dan Kata Sandi | Semua | Profil → `/profile` | `/api/users/me`, `/api/users/me/change-password` | Foto profil: `/api/users/me` (DELETE untuk menghapus) |
 | UC-04 | Berpindah Peran Aktif | Peran operasional | header (`AppLayout.tsx:332`) | `POST /api/auth/role-switch` | Hanya mengubah ruang kerja UI |
@@ -647,22 +710,22 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC), **+1 UC baru diputuskan (Q1) →
 | UC-12 | Melihat Dokumen yang Telah Diproses | PPK, PPSPM | Dokumen Tervalidasi `/ppk/tervalidasi`, Dokumen Tidak Valid `/ppk/ditolak`, Dokumen Ditolak `/ppspm/ditolak`, Dokumen Selesai `/ppspm/selesai` | GET per halaman | |
 | **M4 Pemberkasan** |||||
 | UC-13 | Mengklasifikasikan Dokumen ke Berkas | KSBU | Pengklasifikasian Dokumen → `/kasubag/inbox`, `/kasubag/dokumen/$id` | `POST /api/kasubag/dokumen/$id/archive` | + pilih **Tahun Anggaran** |
-| UC-14 | Menambahkan Dokumen tanpa Alur Persetujuan | KSBU | Penambahan Dokumen → `/kasubag/penambahan-arsip` | `POST /api/kasubag/manual-arsip` | + Tahun Anggaran |
+| UC-14 | Menambahkan Dokumen tanpa Alur Persetujuan | KSBU | Penambahan Dokumen → `/kasubag/penambahan-arsip` | `POST /api/upload` (tertunda), `POST /api/kasubag/manual-arsip` | + Tahun Anggaran; **minimal 1 lampiran** (maksimal 5), sama dengan UC-05 |
 | UC-15 | Mengelola Berkas | KSBU | Berkas Terbuka `/kasubag/berkas`, Berkas Tertutup `/kasubag/berkas/tertutup`, detail `/kasubag/berkas/$id` | `/api/kasubag/berkas/**` (close, export-zip) | |
 | UC-16 | Membersihkan File Berkas | KSBU | Pembersihan Berkas → `/kasubag/pembersihan` | `POST /api/kasubag/berkas/$id/lifecycle` | |
 | UC-17 | Mengelola Klasifikasi Dokumen | KSBU | Master Klasifikasi Dokumen → `/kasubag/klasifikasi` | `/api/kasubag/klasifikasi(/$id)` | |
 | **M5 Pelaporan dan Pemantauan** |||||
-| UC-18 | Melihat Laporan Saya | Pegawai | Laporan Saya → `/pegawai/laporan/saya` | `GET /api/laporan/saya`, `POST …/export-zip` | |
-| UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final` | |
+| UC-18 | Melihat Laporan Saya | Pegawai | Laporan Saya → `/pegawai/laporan/saya` | `GET /api/laporan/saya`, `POST …/export-zip` | Filter periode, bawaan **Bulanan** |
+| UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final` | Filter periode, bawaan **Triwulan** |
 | UC-25 | **Memantau Dokumen Tim** | Ketua Tim | PJ Kegiatan › Monitoring Dokumen Tim → `/pegawai/monitoring-dokumen-tim` | `GET /api/laporan/kegiatan?scope=monitoring` | ✅ **Diputuskan (Q1): UC baru**, bukan alur alternatif UC-19. **Belum ada di kerangka Bab IV** — tambahkan sebagai UC-25 di kerangka (lihat D-21). |
-| UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja` | Sejak D-26 (`37517ff`) turut menghitung dokumen manual KSBU (arsip.manual_arsip), ditandai "Penambahan Dokumen (KSBU)" |
-| UC-21 | Melihat Laporan Kinerja | PJ Kinerja | Laporan Kinerja → `/penanggung-jawab-kinerja/laporan-kinerja` | `GET /api/laporan/kinerja?scope=laporan_kinerja` | |
+| UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja`, `GET /api/dokumen/$id`, `GET /api/laporan/manual-arsip/$id` | Turut menghitung dokumen tambahan KSBU (D-26, `37517ff`), ditandai "Penambahan Dokumen (KSBU)". Detail + lampiran bisa di-Preview/Unduh untuk semua dokumen (`e6ba99c`). Periode bawaan Triwulan, ada mode Bulanan |
+| UC-21 | Melihat Laporan Kinerja | PJ Kinerja | Laporan Kinerja → `/penanggung-jawab-kinerja/laporan-kinerja` | `GET /api/laporan/kinerja?scope=laporan_kinerja`, `GET /api/dokumen/$id`, `GET /api/laporan/manual-arsip/$id` | Material Selesai + non-material Tersimpan + dokumen tambahan KSBU (`e6ba99c`); detail + lampiran Preview/Unduh; periode bawaan Triwulan |
 | **M6 Administrasi Sistem** |||||
 | UC-22 | Mengelola Pengguna dan Penugasan Ketua Tim | Admin | Master User → `/admin/master-data/user` | `/api/users/**`, `/api/ketua-tim/**` | |
 | UC-23 | Mengelola Data Master | Admin | Departemen Fungsi, Master Kegiatan, Master Komponen, Jenis Permintaan, Kategori Permintaan, Detail Permintaan, Kelengkapan Dokumen → `/admin/master-data/*` | `/api/master-*` | **Hapus "jenis dokumen"** dari deskripsi UC-23 |
 | UC-24 | Mengatur Tampilan Aplikasi | Admin | **Pengaturan Aplikasi** → `/admin/settings` | `/api/settings/{theme,general,epoch}` | Tema `se`/`sp`/`st` (`src/lib/schemas/settings.ts:3`). Label menu diganti dari "Settings" (D-5, `e4abe5a`); path tidak berubah. |
 
-Fungsi yang ada di menu tetapi di luar 24 UC:
+Fungsi yang ada di menu tetapi di luar 25 UC:
 - **Log Aktivitas** (dulu berlabel "Activity Log", D-5) untuk enam peran. Lingkup: sendiri, atau semua untuk Admin dan PJ Kinerja.
 - **Dashboard** per peran.
 - **Bantuan** (`/bantuan`).
@@ -770,14 +833,16 @@ Lampiran dokumen **bukan tabel**: disimpan sebagai array JSON di `lampiran_urls`
 Catatan ERD:
 - **Kolom tahun berbeda.** Dokumen punya `tahun`, dari tahun pengajuan. Berkas punya `tahun_anggaran`, yang dipilih KSBU. Keduanya tidak dihubungkan oleh constraint.
 - **Tabel migrasi Drizzle.** Tabel `drizzle.__drizzle_migrations` dibuat oleh drizzle-kit, bukan bagian domain.
+- **Kardinalitas lampiran manual.** Relasi `manual_arsip` 1 — N `manual_arsip_attachment`. Aturan "minimal 1, maksimal 5 lampiran" ditegakkan **aplikasi** saat pembuatan (`createManualArsipSchema`), bukan constraint basis data, sehingga dokumen manual lama tanpa lampiran tetap sah secara skema. Di ERD tetap gambarkan **0..N** (`||--o{`, sesuai skema dan `rancangan-erd.md` R-44), lalu beri catatan "minimal 1 lampiran untuk dokumen baru ditegakkan aplikasi sejak `e6ba99c`".
+- **Tidak ada perubahan skema basis data** dari pekerjaan filter periode, laporan, dan lampiran manual (`e6ba99c`); migrasi terakhir tetap `0020`.
 
 ## B.5 Urutan pemanggilan untuk 6 diagram sequence
 
 **(1) Submit dokumen**: `POST /api/dokumen/submit` (`src/routes/api/dokumen/submit.ts`)
-1. `requireSameOrigin` (`:403`) → JSON → `createAndSubmitDokumenSchema.safeParse` (`:412`).
-2. `validateNominalForMaterial` (`:421`) → `validateWorkflowChainForCharacteristic` (`:431`).
-3. `handleLocalDbSubmit`: `getLocalServerSession` → `createLocalSubmitActorFromSession` (harus PEGAWAI) (`:72-81`).
-4. `buildSubmitMovePlan` → `preflightSubmitFiles` (file tertunda ada dan milik pengguna) (`:83-100`).
+1. `requireSameOrigin` (`:325`) → JSON → `createAndSubmitDokumenSchema.safeParse` (`:334`).
+2. `validateNominalForMaterial` (`:343`) → `validateWorkflowChainForCharacteristic` (`:353`).
+3. `handleLocalDbSubmit` (`:38`): `getLocalServerSession` → `createLocalSubmitActorFromSession` (harus PEGAWAI) (`:42-51`).
+4. `buildSubmitMovePlan` → `preflightSubmitFiles` (file tertunda ada dan milik pengguna) (`:53-70`).
 5. `prepareLocalSubmitWriteBridge` (`local-submit-write-bridge.ts:262-352`):
    - `checkLampiranNotEmpty`
    - `getKegiatanById`
@@ -835,6 +900,8 @@ Catatan ERD:
    - `readLocalLogicalPathFile` (normalisasi path, anti traversal);
    - stream file dengan `secureHeaders` dan `Content-Disposition`.
 
+   Varian untuk **lampiran dokumen tambahan KSBU** di laporan (satu langkah, tanpa token HMAC): `ManualArsipAttachmentViewer` memanggil `GET /api/laporan/manual-arsip/$id/attachments/$attachmentId/preview` (atau `/download`) → `requireLaporanManualArsipSession` (401 tanpa sesi, 403 bila bukan PJ Kinerja/PPK/PPSPM/KSBU) → validasi UUID (404) → `createManualArsipAttachmentFileResponse` (`src/lib/manual-arsip.ts:856`: 404 bila lampiran tidak ada, 410 bila `DIMUSNAHKAN`, cek tipe konten dan path aman) → isi file dikirim langsung. Browser mengubahnya menjadi blob untuk pratinjau PDF atau unduhan.
+
 **(6) Pembersihan non-material**: `POST /api/pembersihan-dokumen/bersihkan`
 1. `requireSameOrigin` → sesi → `hasLocalRole('PEGAWAI')` (`:32-39`).
 2. `bodySchema.strict()`: `dokumen_ids` 1–200 UUID, `confirmation` = `'BERSIHKAN'` (`:14-19,42-45`).
@@ -880,64 +947,69 @@ Versi terpasang dibaca dari `node_modules/<pkg>/package.json` pada 27-09-2026. B
 ```
 src/
 ├── routes/            file-based routing (TanStack Start)
-│   ├── api/           95 handler HTTP (same-origin → sesi → peran → Zod → layanan)
+│   ├── api/           97 berkas handler HTTP (same-origin → sesi → peran → Zod → layanan)
 │   ├── pegawai/ ppk/ ppspm/ kasubag/ penanggung-jawab-kinerja/   halaman per peran
 │   ├── admin.*.tsx    halaman admin (flat route)
-│   └── login.tsx, bantuan.tsx, profile.tsx, forbidden.tsx, dokumen/* (legacy)
-├── components/        61 komponen (ui/, layout/, dokumen/, laporan/, kinerja/, activity-log/, …)
-├── lib/               108 modul domain: fsm.ts, auth/, users/, dokumen/, archive/, storage/,
+│   └── login.tsx, bantuan.tsx, profile.tsx, forbidden.tsx
+├── components/        65 komponen (ui/, layout/, dokumen/, laporan/, kinerja/, arsip/, activity-log/, …)
+├── lib/               109 modul domain: fsm.ts, auth/, users/, dokumen/, archive/, storage/,
 │                      export/, laporan/, master-data/, schemas/ (Zod), security/, upload/, constants/
 ├── db/                client, schema/{auth,master,dokumen,arsip,audit,app}, seed/
 ├── hooks/  config/navigation.ts  scripts/ (generate-password-hash, sweep-pending-uploads)
-drizzle/               0000–0019 migrasi SQL + meta/_journal.json
-tests/                 fsm.test.ts, unit/** (Vitest), e2e/** (Playwright)
+drizzle/               0000–0020 migrasi SQL + meta/_journal.json
+tests/                 fsm.test.ts, unit/** (Vitest), integration/** (Vitest + Postgres asli), e2e/** (Playwright)
 infra/docker/postgres/ docker-compose + init/001-create-schemas.sql
 ```
 
 ## C.3 Jumlah berkas dan baris per lapisan
 
-Dihitung dari `.ts`/`.tsx` non-tes pada 27-09-2026.
+Dihitung dari `.ts`/`.tsx` non-tes pada 28-09-2026 (setelah `e6ba99c`, D-27, dan pembersihan kode lama D-16/D-9). Baris = semua baris termasuk baris kosong.
 
 | Lapisan | Lokasi | Berkas | Baris |
 |---|---|---|---|
-| Presentasi: halaman | `src/routes/**` selain `api/` (`.tsx`, termasuk `-components/`) | 75 | 27.435 |
-| Presentasi: komponen | `src/components/` | 61 | 13.192 |
-| Endpoint | `src/routes/api/` | 95 | 13.013 |
-| Domain / layanan | `src/lib/` | 108 | 19.457 |
-| Data | `src/db/` | 32 | 1.588 |
-| Lainnya | `src/hooks/` 4 (207), `src/config/` 1 (228), `src/scripts/` 2 (74) | 7 | 509 |
-| Migrasi | `drizzle/*.sql` | 20 | — |
+| Presentasi: halaman | `src/routes/**` selain `api/` (`.tsx`, termasuk `-components/`) | 68 | 27.157 |
+| Presentasi: komponen | `src/components/` | 65 | 13.878 |
+| Endpoint | `src/routes/api/` | 97 | 13.017 |
+| Domain / layanan | `src/lib/` | 109 | 19.673 |
+| Data | `src/db/` | 32 | 1.594 |
+| Lainnya | `src/hooks/` 4 (207), `src/config/` 1 (223), `src/scripts/` 2 (74) | 7 | 504 |
+| Migrasi | `drizzle/*.sql` | 21 | — |
 
-Halaman per peran: pegawai 13, ppk 10, ppspm 7, kasubag 10, PJ Kinerja 3, admin 13 (termasuk layout).
+Halaman per peran (berkas `.tsx`, termasuk layout dan `-components/`): pegawai 13, ppk 10, ppspm 7, kasubag 11, PJ Kinerja 3, admin 13.
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 27-09-2026 18:11, branch `fix/temuan-bab-v` setelah perbaikan Bagian D, termasuk D-26/T-5):
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 28-09-2026, setelah `e6ba99c`, D-27, dan pembersihan kode lama D-16/D-9):
 - **112 berkas tes lulus dari 112**;
-- **1.160 kasus lulus, 1 dilewati, 0 gagal** (1.161 total);
-- durasi 26,76 detik;
+- **1.179 kasus lulus, 1 dilewati, 0 gagal** (1.180 total);
+- durasi 28,25 detik;
 - `tsc --noEmit` bersih;
-- sebelum perbaikan (HEAD `043449d`): 108 berkas, 1.060 lulus + 1 dilewati (1.061). Selisih: +4 berkas, +100 kasus;
-- satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`.
+- riwayat:
+  - `043449d` (sebelum perbaikan Bagian D): 108 berkas, 1.060 lulus + 1 dilewati;
+  - setelah perbaikan Bagian D dan D-26: 112 berkas, 1.160 lulus + 1 dilewati;
+  - `e6ba99c` + D-27: 113 berkas, 1.191 lulus + 1 dilewati (+`tests/unit/laporan/manual-arsip-route.test.ts`; mode Bulanan, akses PJ Kinerja, rute baca dokumen manual, lampiran manual wajib, guard tampilan);
+  - setelah D-16: 112 berkas, 1.179 lulus + 1 dilewati. Tes rute `rename-pending` yang dihapus ikut dihapus, begitu pula tes cabang `MULTIPLE_OPEN_BERKAS`, dan dua tes dry-run diganti tes "parameter diabaikan";
+- satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`;
+- baris `stderr` yang muncul saat run berasal dari tes skenario gagal yang sengaja memicu log error, bukan kegagalan.
 
 **Tes integrasi** (`pnpm test:integration` = `vitest run --config vitest.integration.config.ts`, 27-09-2026, setelah D-20): **1 berkas, 3 kasus lulus**. Berkas `tests/integration/dokumen-transaksi-permintaan-fk.test.ts` menyambung ke PostgreSQL asli (bukan `db` yang di-mock) dan membuktikan FK D-20 menolak UUID yang tidak ada di master (kode `23503`); setiap kasus di dalam transaksi yang di-ROLLBACK. Folder `tests/integration/**` dikecualikan dari `pnpm test`, jadi angka Vitest di atas **tidak** memuat tes ini dan tetap sama sebelum/sesudah D-20. Butuh Postgres lokal jalan (lihat C.5).
 
-Sebaran per modul (folder `tests/unit/*`). Jumlah kasus per modul adalah **perkiraan** dari hitungan `it(`/`test(`; totalnya mengikuti hasil run di atas.
+Sebaran per modul (folder `tests/unit/*`, dihitung ulang 28-09-2026). Jumlah kasus per modul adalah **perkiraan** dari hitungan teks `it(`/`test(`; kasus `it.each` dihitung satu walau dijalankan berkali-kali, sehingga jumlahnya lebih kecil dari total hasil run. Angka resmi adalah total hasil run di atas.
 
 | Modul | Berkas | ± Kasus |
 |---|---|---|
-| Modul transisi status (`tests/fsm.test.ts`) | 1 | **49** |
-| arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~318 |
-| storage (unggah, tertunda, akses file, pembersihan) | 26 | ~245 |
-| dokumen (submit, revisi, guard transisi, PATCH, checklist kelengkapan, pembersihan, master data) | 27 | ~257 |
-| laporan (kinerja, periode, filter, manual KSBU) | 7 | ~98 |
-| auth (sesi, login, rate-limit, peran, navigasi) | 10 | 66 |
-| export | 1 | 19 |
-| utils | 3 | 19 |
-| components | 3 | 16 |
-| security (same-origin) | 1 | 9 |
-| users | 3 | ~16 |
-| dashboard / db / profile / kelengkapan / hooks / pegawai / styles | 8 | ~33 |
+| Modul transisi status (`tests/fsm.test.ts`) | 1 | **49** (hasil run) |
+| arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~312 |
+| storage (unggah, tertunda, akses file, pembersihan) | 25 | ~221 |
+| dokumen (submit, revisi, guard transisi, PATCH, akses baca, checklist kelengkapan, pembersihan, master data) | 27 | ~205 |
+| laporan (kinerja, periode + Bulanan, filter, dokumen manual KSBU, rute baca manual) | 8 | ~117 |
+| auth (sesi, login, rate-limit, peran, navigasi) | 10 | ~66 |
+| export | 1 | ~19 |
+| utils | 3 | ~19 |
+| components | 3 | ~16 |
+| security (same-origin) | 1 | ~9 |
+| users | 3 | ~7 |
+| dashboard / db / profile / hooks / pegawai / styles | 7 | ~28 |
 
 Rincian 49 kasus `tests/fsm.test.ts`:
 
@@ -953,13 +1025,13 @@ Rincian 49 kasus `tests/fsm.test.ts`:
 
 Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/kembalikan/$id` ada di `tests/unit/dokumen/dokumen-transition-guards-route.test.ts`: 400 bila `revision_target` ≠ PPK atau status bukan NEED_REVISION, 403 untuk peran non-PPK, catatan otomatis memuat "Alasan penolakan PPSPM", 409 saat balapan.
 
-**Playwright (e2e)**, 68 kasus di `tests/e2e/`:
+**Playwright (e2e)**, 67 kasus di `tests/e2e/`:
 
 | Spec | Kasus |
 |---|---|
 | `approval-flow.spec.ts` | 27 |
 | `spec-06-user-management.spec.ts` | 21 |
-| `submit-flow.spec.ts` | 20 |
+| `submit-flow.spec.ts` | 19 (TC-01 "redirect /dokumen" dihapus bersama rute lama, D-16; URL `/dokumen/saya` diganti `/pegawai/dokumen`) |
 
 **Tidak dijalankan** di pembaruan ini karena butuh aplikasi dan basis data hidup, dan **tidak ada skrip e2e di `package.json`**. Jalankan manual dengan `pnpm exec playwright test` [BELUM TERVERIFIKASI konfigurasi baseURL/seed].
 
@@ -984,26 +1056,26 @@ Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/k
 
 | Peran | Halaman (path) |
 |---|---|
-| Umum | Login `/login` (username/NIP), Bantuan `/bantuan`, Profil `/profile`, Forbidden `/forbidden` |
-| Pegawai | Dashboard `/pegawai`; Ajukan Dokumen `/pegawai/dokumen/aju` (tiap langkah: karakteristik, komponen, jenis/kategori/detail, nominal, unggah, review); Dokumen Diajukan `/pegawai/dokumen`; Detail `/pegawai/dokumen/$id` (timeline); Ubah `/pegawai/dokumen/$id/edit`; Revisi `/pegawai/revisi`, `/pegawai/dokumen/$id/revisi`; Laporan Saya `/pegawai/laporan/saya` (+ dialog ekspor ZIP); Activity Log `/pegawai/activity-log` |
-| Ketua Tim | Monitoring Dokumen Tim `/pegawai/monitoring-dokumen-tim`; Laporan Kegiatan `/pegawai/laporan/kegiatan`; Pembersihan Dokumen `/pegawai/pembersihan-dokumen` (+ dialog ketik `BERSIHKAN`) |
-| PPK | Dashboard `/ppk`; Validasi Dokumen `/ppk/inbox`; Detail `/ppk/dokumen/$id` (dialog tolak); Tervalidasi `/ppk/tervalidasi`; Tidak Valid `/ppk/ditolak`; Revisi `/ppk/revisi`; Kirim Ulang `/ppk/dokumen/$id/resubmit`; Nominal Realisasi `/ppk/monitoring-realisasi`; Activity Log |
-| PPSPM | Dashboard `/ppspm`; Persetujuan `/ppspm/inbox`; Detail `/ppspm/dokumen/$id`; Ditolak `/ppspm/ditolak`; Selesai `/ppspm/selesai`; Nominal Realisasi `/ppspm/monitoring-realisasi`; Activity Log |
-| KSBU | Dashboard `/kasubag`; Pengklasifikasian `/kasubag/inbox` + `/kasubag/dokumen/$id` (pilih Cara Pembayaran + TA); Penambahan Dokumen `/kasubag/penambahan-arsip`; Berkas Terbuka `/kasubag/berkas`; Detail Berkas `/kasubag/berkas/$id` (timeline, dialog Tutup Berkas); Berkas Tertutup `/kasubag/berkas/tertutup` (umur, Jatuh Tempo); Pembersihan Berkas `/kasubag/pembersihan` (toggle Usulan/Sudah Dibersihkan, dialog ketik frasa); Master Klasifikasi `/kasubag/klasifikasi`; Activity Log |
-| PJ Kinerja | Dashboard `/penanggung-jawab-kinerja`; Laporan Kinerja `/penanggung-jawab-kinerja/laporan-kinerja` (drill-down, filter periode); Activity Log (semua pengguna) |
-| Admin | Dashboard `/admin`; Master User `/admin/master-data/user` (peran, Ketua Tim, reset sandi, nonaktif, foto); Fungsi, Kegiatan, Komponen, Jenis, Kategori, Detail, Kelengkapan `/admin/master-data/*`; Settings `/admin/settings` (tema se/sp/st, sub-judul); Activity Log `/admin/activity-log` (semua pengguna) |
+| Umum | Login `/login` (username/NIP, tombol lihat kata sandi), Bantuan `/bantuan`, Profil `/profile`, Forbidden `/forbidden` |
+| Pegawai | Dashboard `/pegawai`; Ajukan Dokumen `/pegawai/dokumen/aju` (tiap langkah: karakteristik, komponen, jenis/kategori/detail, nominal, unggah, review); Dokumen Diajukan `/pegawai/dokumen`; Detail `/pegawai/dokumen/$id` (timeline); Ubah `/pegawai/dokumen/$id/edit`; Revisi `/pegawai/revisi`, `/pegawai/dokumen/$id/revisi`; Laporan Saya `/pegawai/laporan/saya` (filter periode bawaan Bulanan, + dialog ekspor ZIP); Log Aktivitas `/pegawai/activity-log` |
+| Ketua Tim | Monitoring Dokumen Tim `/pegawai/monitoring-dokumen-tim`; Laporan Kegiatan `/pegawai/laporan/kegiatan` (filter periode bawaan Triwulan); Pembersihan Dokumen `/pegawai/pembersihan-dokumen` (+ dialog ketik `BERSIHKAN`) |
+| PPK | Dashboard `/ppk`; Validasi Dokumen `/ppk/inbox`; Detail `/ppk/dokumen/$id` (dialog tolak); Tervalidasi `/ppk/tervalidasi`; Tidak Valid `/ppk/ditolak`; Revisi `/ppk/revisi`; Kirim Ulang `/ppk/dokumen/$id/resubmit`; Nominal Realisasi `/ppk/monitoring-realisasi` (filter periode; dialog detail dokumen alur dan dokumen tambahan KSBU dengan Preview/Unduh lampiran); Log Aktivitas |
+| PPSPM | Dashboard `/ppspm`; Persetujuan `/ppspm/inbox`; Detail `/ppspm/dokumen/$id`; Ditolak `/ppspm/ditolak`; Selesai `/ppspm/selesai`; Nominal Realisasi `/ppspm/monitoring-realisasi` (sama dengan PPK); Log Aktivitas |
+| KSBU | Dashboard `/kasubag`; Pengklasifikasian `/kasubag/inbox` + `/kasubag/dokumen/$id` (pilih Cara Pembayaran + TA); Penambahan Dokumen `/kasubag/penambahan-arsip` (4 langkah; langkah Berkas Pendukung dengan pesan "Minimal 1 lampiran wajib diunggah"); Berkas Terbuka `/kasubag/berkas`; Detail Berkas `/kasubag/berkas/$id` (timeline, dialog Tutup Berkas); Berkas Tertutup `/kasubag/berkas/tertutup` (umur, Jatuh Tempo); Pembersihan Berkas `/kasubag/pembersihan` (toggle Usulan/Sudah Dibersihkan, dialog ketik frasa); Master Klasifikasi `/kasubag/klasifikasi`; Log Aktivitas |
+| PJ Kinerja | Dashboard `/penanggung-jawab-kinerja`; Laporan Kinerja `/penanggung-jawab-kinerja/laporan-kinerja` (drill-down, filter periode, dialog detail + Preview/Unduh lampiran untuk dokumen alur dan dokumen tambahan KSBU); Log Aktivitas (semua pengguna) |
+| Admin | Dashboard `/admin`; Master User `/admin/master-data/user` (peran, Ketua Tim, reset sandi, nonaktif, foto); Fungsi, Kegiatan, Komponen, Jenis, Kategori, Detail, Kelengkapan `/admin/master-data/*`; Pengaturan Aplikasi `/admin/settings` (tema se/sp/st, sub-judul); Log Aktivitas `/admin/activity-log` (semua pengguna) |
 
 ## C.7 Pemetaan fitur → karakteristik ISO/IEC 25010 (bahan butir kuesioner)
 
 | Karakteristik | Sub-karakteristik | Fitur yang bisa ditanyakan | Bukti kode |
 |---|---|---|---|
-| **Functional suitability** | Kelengkapan, kebenaran, kesesuaian | Pengajuan dua jalur; persetujuan PPK→PPSPM; revisi/kembalikan; pemberkasan per Cara Pembayaran × TA; laporan & realisasi; pembersihan | B.1, B.2, B.3 |
-| **Performance efficiency** | Perilaku waktu, kapasitas | Batas ZIP 500 dokumen, batas pembersihan 200, laporan kinerja maksimal 2000 baris, Activity Log maksimal 500 baris, unggah 5 MB | `document-zip.ts:71`, `pembersihan.ts:21`, `kinerja.ts`, `activity-log.ts` |
+| **Functional suitability** | Kelengkapan, kebenaran, kesesuaian | Pengajuan dua jalur; persetujuan PPK→PPSPM; revisi/kembalikan; pemberkasan per Cara Pembayaran × TA; laporan & realisasi dengan filter periode (Bulanan/Triwulan/Tahunan/Kustom) yang mencakup dokumen tambahan KSBU; preview/unduh lampiran dari laporan; pembersihan | B.1, B.2, B.3, PB-7 |
+| **Performance efficiency** | Perilaku waktu, kapasitas | Batas ZIP 500 dokumen, batas pembersihan 200, laporan kinerja maksimal 2000 baris, Log Aktivitas maksimal 500 baris, unggah 5 MB | `document-zip.ts:71`, `pembersihan.ts:21`, `kinerja.ts`, `activity-log.ts` |
 | **Compatibility** | Ko-eksistensi / interoperabilitas | Berdiri sendiri; hasil ekspor ZIP/CSV bisa dipakai di aplikasi lain secara manual | §1 |
 | **Interaction capability (usability)** | Kemudahan dipelajari, operabilitas, perlindungan dari kesalahan, estetika | Formulir bertahap + checklist; halaman Bantuan; menu per peran; konfirmasi ketik-persis; guard perubahan belum disimpan; toast; tiga tema; peringatan dokumen tertahan | `aju.tsx`, `bantuan.tsx`, `navigation.ts`, `ConfirmDialog` |
-| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.160 tes unit lulus | §PB-2.2, PB-6.5, C.4 |
+| **Reliability** | Kematangan, toleransi kesalahan, pemulihan | Transaksi submit + rollback file; penjaga konflik bersamaan; penghapusan file idempoten; hapus file lama setelah commit; sweeper file tertunda; 1.179 kasus tes unit lulus | §PB-2.2, PB-6.5, C.4 |
 | **Security** | Kerahasiaan, integritas, non-repudiasi, akuntabilitas, autentisitas | Argon2id; sesi 8 jam dengan token hash; rate-limit login; peran dicek server; same-origin; URL lampiran HMAC; cek magic bytes; riwayat dokumen/berkas/audit | Lampiran E |
-| **Maintainability** | Modularitas, dapat diuji, dapat dimodifikasi | Lapisan route/lib/db; modul transisi terpusat; injeksi repository; Zod di setiap batas; 112 berkas tes | Lampiran B, C.4 |
+| **Maintainability** | Modularitas, dapat diuji, dapat dimodifikasi | Lapisan route/lib/db; modul transisi terpusat; injeksi repository; Zod di setiap batas; komponen bersama (`PeriodeSelector`, penampil lampiran); kode mati dibersihkan (D-16); 112 berkas tes | Lampiran B, C.4 |
 | **Flexibility (portability)** | Kemampuan instal, adaptabilitas | Docker PostgreSQL; berjalan di LAN tanpa internet; konfigurasi via `.env` | C.5 |
 
 ---
@@ -1019,35 +1091,37 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-3 | **✅ SELESAI `3a34192`.** GET memakai `requireKepalaSubBagianUmum` (401/403). Pemanggilnya hanya halaman `/kasubag/*`. Audit endpoint lain: lihat D-23. *Temuan asli:* **`GET /api/kasubag/klasifikasi` tanpa cek sesi/peran.** Siapa pun di jaringan bisa membaca pohon klasifikasi dan kelayakan berkas per TA. Rute tulis di berkas yang sama tetap memakai `requireKepalaSubBagianUmum`. | `src/routes/api/kasubag/klasifikasi/index.ts:130-` | **S** |
 | D-4 | ✅ **Diputuskan (Q2), bukan bug.** Setelah ditutup, (Cara Pembayaran, TA) terkunci permanen **secara sengaja**: 1 Cara Pembayaran = 1 SPM per TA. Tulis sebagai keputusan perancangan di Bab IV, bukan keterbatasan. Tidak ada perubahan kode. *Temuan asli:* Bila KSBU salah menutup berkas atau butuh SPM kedua pada TA yang sama, tidak ada jalan keluar di aplikasi. | `0018`, `berkas-arsip-service.ts:851-876`, `CloseBerkasDialog.tsx` | R (keputusan diambil) |
 | D-5 | **✅ SELESAI `e4abe5a`.** Item dihapus dari 5 peran; ADMIN: "Pengaturan Aplikasi" (path `/admin/settings` tetap); "Activity Log" → "Log Aktivitas" di semua peran. *Temuan asli:* Menu **"Settings" tanpa tujuan** di 5 peran non-admin. | `src/config/navigation.ts` (item tanpa `to`) | R |
-| D-6 | **Pencampuran ADMIN diringkas diam-diam**, bukan ditolak. Pesan "ADMIN tidak boleh digabung…" tidak pernah muncul karena `normalizeAdminRolePayload` sudah membuang peran lain. Admin bisa mengira PPK tersimpan padahal tidak. | `role-assignment.ts:6-16`, `users/index.ts:107-108` | S |
-| D-7 | **Pemeriksaan "admin aktif terakhir" tanpa kunci baris.** Dua permintaan bersamaan secara teori bisa menonaktifkan dua admin terakhir. | `local-user-mutations.ts:437-449` | R |
-| D-8 | **Rate-limit login di memori proses**, dengan kunci IP dari `x-forwarded-for`/`x-real-ip` yang bisa dipalsukan klien. Hilang saat restart dan tidak berbagi antarproses. | `login-rate-limit.ts:28`, `login.ts:96-103` | S |
-| D-9 | **"Ingat saya" 30 hari tidak terjangkau.** Konstanta dan kolom `sessions.remember_me` ada, tetapi `loginSchema` tidak punya field-nya. | `session-constants.ts:10`, `src/lib/schemas/auth.ts` | R |
-| D-10 | **Validasi MIME memakai tipe yang dilaporkan browser.** Untuk DOCX/XLSX, magic bytes hanya membuktikan "berkas ZIP". | `document-upload-policy.ts:166-193` | R |
-| D-11 | **Token HMAC hanya untuk lampiran dokumen.** File berkas dan dokumen manual cukup dengan cek sesi + peran KSBU. Sebutkan dengan tepat di skripsi. | `berkas-arsip-file-access.ts`, `manual-arsip.ts` | R (dokumentasi) |
+| D-6 | **🔒 Diputuskan: keterbatasan (K-1).** **Pencampuran ADMIN diringkas diam-diam**, bukan ditolak. Pesan "ADMIN tidak boleh digabung…" tidak pernah muncul karena `normalizeAdminRolePayload` sudah membuang peran lain. Admin bisa mengira PPK tersimpan padahal tidak. | `role-assignment.ts:6-16`, `users/index.ts:107-108` | S |
+| D-7 | **🔒 Diputuskan: keterbatasan (K-2).** **Pemeriksaan "admin aktif terakhir" tanpa kunci baris.** Dua permintaan bersamaan secara teori bisa menonaktifkan dua admin terakhir. | `local-user-mutations.ts:437-449` | R |
+| D-8 | **🔒 Diputuskan: keterbatasan (K-3).** **Rate-limit login di memori proses**, dengan kunci IP dari `x-forwarded-for`/`x-real-ip` yang bisa dipalsukan klien. Hilang saat restart dan tidak berbagi antarproses. | `login-rate-limit.ts:28`, `login.ts:96-103` | S |
+| D-9 | **✅ SELESAI (bagian kode).** Fitur "Ingat saya" memang tidak dipakai, jadi kodenya dihapus: konstanta `REMEMBER_ME_DURATION_SECONDS`, opsi `rememberMe` di `loginWithLocalCredentials`, dan field `rememberMe` saat membuat sesi. Setiap sesi kini selalu 8 jam (`SESSION_DURATION_SECONDS`). Kolom `sessions.remember_me` **dipertahankan di skema** (selalu `false`) karena menghapusnya butuh migrasi; tercatat sebagai sisa skema (lihat D-16 Golongan 3). *Temuan asli:* **"Ingat saya" 30 hari tidak terjangkau.** Konstanta dan kolom `sessions.remember_me` ada, tetapi `loginSchema` tidak punya field-nya. | `src/lib/auth/{session-constants,local-auth-service,session-repository}.ts` | R |
+| D-10 | **🔒 Diputuskan: keterbatasan (K-4).** **Validasi MIME memakai tipe yang dilaporkan browser.** Untuk DOCX/XLSX, magic bytes hanya membuktikan "berkas ZIP". | `document-upload-policy.ts:166-193` | R |
+| D-11 | **📝 Catatan penulisan (bukan bug).** **Token HMAC hanya untuk lampiran dokumen alur.** File berkas cukup dengan cek sesi + peran KSBU. Lampiran dokumen manual cukup dengan cek sesi + peran: KSBU lewat `/api/kasubag/manual-arsip/**`, serta PJ Kinerja/PPK/PPSPM/KSBU (baca saja) lewat `/api/laporan/manual-arsip/**` (sejak `e6ba99c`). Sebutkan dengan tepat di skripsi. | `berkas-arsip-file-access.ts`, `manual-arsip.ts:197,215` | R (dokumentasi) |
 | D-12 | **✅ SELESAI `df8ea51`, `d328ad7`, dikuatkan `38f5900`.** Submit: `is_ketua_tim` = hasil penugasan di server (klaim Ketua Tim palsu tetap ditolak; Ketua Tim yang mengirim `false` dicatat & dicek sebagai Ketua Tim). **Keputusan produk yang disengaja:** nilai `is_ketua_tim` dikunci sejak SUBMIT untuk seluruh umur dokumen dan **tidak pernah** diverifikasi ulang ke penugasan terkini — bila admin mencabut penugasan Ketua Tim setelah dokumen diajukan, dokumen itu tetap memakai checklist Ketua Tim. Sejak D-24 (`38f5900`), `kegiatanId` tidak lagi diterima `PATCH /api/dokumen/$id` sama sekali, sehingga tidak ada jalan apa pun untuk mengubah `is_ketua_tim` setelah submit — lebih ketat dari rencana semula (menghitung ulang saat kegiatan berubah). Ditegaskan komentar kebijakan di `resubmit-validation.ts` dan tes yang menguncinya. Baris lama sebelum `df8ea51` tidak dikoreksi. *Temuan asli:* **Pengaju bisa mengaku "Anggota" meski ia Ketua Tim.** Server hanya memverifikasi klaim Ketua Tim, bukan klaim Anggota, sehingga checklist Anggota yang lebih ringan bisa dipakai lewat manipulasi permintaan. | `local-submit-write-bridge.ts:294-306` | S |
-| D-13 | **Pembersihan non-material menghapus file sebelum menandai basis data.** Bila `applyCleanup` gagal setelah file terhapus, dokumen tidak berlabel "dibersihkan" padahal file hilang. Aksi idempoten bisa diulang, tetapi tidak atomik. | `pembersihan-service.ts:187-236` | R |
+| D-13 | **🔒 Diputuskan: keterbatasan (K-5).** **Pembersihan non-material menghapus file sebelum menandai basis data.** Bila `applyCleanup` gagal setelah file terhapus, dokumen tidak berlabel "dibersihkan" padahal file hilang. Aksi idempoten bisa diulang, tetapi tidak atomik. | `pembersihan-service.ts:187-236` | R |
 | D-14 | **✅ SELESAI `89a93bd`.** +10 kasus di `tests/fsm.test.ts` (39 → 49) dan +6 kasus rute. *Temuan asli:* **Tes modul transisi tidak mencakup `KEMBALIKAN`.** Kerangka Bab IV menargetkan "seluruh transisi lolos unit testing", jadi target ini **belum terpenuhi** untuk transisi #8. | `tests/fsm.test.ts` (39 kasus, 0 untuk KEMBALIKAN) | **T** (klaim skripsi) |
-| D-15 | **Tidak ada skrip e2e** di `package.json`; Playwright harus dipanggil manual. | `package.json:8-24` | R |
-| D-16 | **Kode peninggalan:** | | R |
-| | • `/api/dokumen/rename-pending` tidak dipanggil klien mana pun | `src/routes/api/dokumen/rename-pending.ts` | |
-| | • parameter dry-run `useLocalAuthDryRun`/`useLocalPreflightDryRun` | `submit.ts:40-45` | |
-| | • label aksi `UPDATE_NOMINAL` dan komentar "update nominal" | `aksi-labels.ts:58-68`, `activity-log.ts:48` | |
-| | • cabang `MULTIPLE_OPEN_BERKAS` (mustahil sejak unique index) | `berkas-klasifikasi-eligibility.ts:89-127` | |
-| | • enum `INAKTIF` dan peristiwa `BERKAS_DIPINDAHKAN_KE_INAKTIF` | `archive-status.ts`, `berkas-arsip.ts:149` | |
-| | • kolom siklus lama di `manual_arsip` dan `retensi_inaktif`/`masa_inaktif_berakhir` | skema arsip | |
-| | • tipe `AppUser.email: string` | `src/lib/types/auth.ts:9` | |
-| | • rute legacy `/dokumen`, `/dokumen/$id`, `/dokumen/$id/edit`, `/dokumen/aju`, `/dokumen/aji` (salah ketik, redirect), `/dokumen/saya` | `src/routes/dokumen/*` | |
+| D-15 | **🔒 Diputuskan: keterbatasan (K-6).** **Tidak ada skrip e2e** di `package.json`; Playwright harus dipanggil manual (`pnpm exec playwright test`). | `package.json:8-24` | R |
+| D-16 | **✅ SELESAI (Golongan 1), sisanya diputuskan dipertahankan.** Kode peninggalan dipilah tiga golongan: | | R |
+| | **Golongan 1: kode mati, DIHAPUS.** | | |
+| | • rute `POST /api/dokumen/rename-pending` (tidak dipanggil klien mana pun) beserta tesnya; helper yang dipakainya tetap ada karena dipakai modul lain | dulu `src/routes/api/dokumen/rename-pending.ts` | |
+| | • parameter dry-run `useLocalAuthDryRun`/`useLocalPreflightDryRun` di rute submit; kini diabaikan (ada tes yang menguncinya) | `src/routes/api/dokumen/submit.ts` | |
+| | • cabang `MULTIPLE_OPEN_BERKAS` dan field `anomaly` (mustahil sejak unique index `berkas_arsip_klasifikasi_tahun_unique`) | `berkas-klasifikasi-eligibility.ts` (`getKlasifikasiBerkasEligibility`) | |
+| | • tipe `AppUser`/`AppSession` peninggalan Supabase (tidak dipakai di mana pun) | `src/lib/types/auth.ts` | |
+| | • rute lama `/dokumen`, `/dokumen/$id`, `/dokumen/$id/edit`, `/dokumen/aju`, `/dokumen/aji`, `/dokumen/saya` (semuanya hanya pengalih) dan konstanta `ROUTES.LEGACY_DOKUMEN`. Tombol "Ajukan Dokumen" di dashboard Pegawai kini langsung ke `/pegawai/dokumen/aju`; spec e2e diarahkan ke `/pegawai/dokumen` | dulu `src/routes/dokumen*`; `DashboardShell.tsx`, `routes.ts`, `tests/e2e/*` | |
+| | • kode "Ingat saya" (D-9) | lihat D-9 | |
+| | **Golongan 2: tampak lama, tetapi DIPERTAHANKAN untuk riwayat lama.** Label `UPDATE_NOMINAL`, `BENDAHARA_APPROVE/REJECT`, dan peristiwa `BERKAS_DIPINDAHKAN_KE_INAKTIF` dipakai untuk menampilkan baris riwayat lama (tabel riwayat bersifat append-only). Menghapusnya membuat riwayat lama tampil sebagai kode mentah. | `aksi-labels.ts:18-21,57-73`, `berkas-arsip-activity.ts:9,23` | |
+| | **Golongan 3: sisa di skema basis data, DIPERTAHANKAN (tanpa migrasi).** Kolom `sessions.remember_me`; nilai `INAKTIF` di constraint `status_arsip` (berkas & manual) dan peristiwa `BERKAS_DIPINDAHKAN_KE_INAKTIF` di constraint riwayat berkas; kolom `inactivated_*`, `proposed_destroy_*`, `destroyed_*` di `manual_arsip` (tidak dibaca kode); `retensi_inaktif`/`masa_inaktif_berakhir` (masih terhubung ke layanan berkas, selalu kosong). Menghapusnya butuh migrasi yang bisa gagal bila ada data lama; dicatat sebagai K-7. | `src/db/schema/{auth/sessions,arsip/berkas-arsip,arsip/manual-arsip}.ts` | |
 | D-17 | **✅ SELESAI `ae966d2`.** Label → "Karakteristik". *Temuan asli:* **Label UI "Jenis Dokumen"** di ringkasan sukses halaman revisi dan kirim ulang (dan teks konfirmasi pengajuan) sebenarnya menampilkan **karakteristik** (Material/Non-Material), bukan master yang sudah dihapus. Istilahnya membingungkan; sebaiknya "Karakteristik". | `revisi.tsx:402-405`, `resubmit.tsx:418`, `aju.tsx:1184` | R |
 | D-18 | **✅ SELESAI `ae966d2`.** Pesan: "Berkas untuk Cara Pembayaran ini pada TA {tahun} sudah ditutup." *Temuan asli:* **`CLOSED_UNAVAILABLE_REASON` tidak menyebut TA.** Pesan kelayakan tidak menjelaskan bahwa kuncinya per tahun. | `berkas-klasifikasi-eligibility.ts:42` | R |
-| D-19 | **Tabel `audit.audit_log` tidak punya tampilan UI.** Klaim "pemeriksa bisa menelusuri dokumen yang dihapus" hanya berlaku lewat akses basis data langsung. | tidak ditemukan pembaca di halaman | S (klaim skripsi) |
+| D-19 | **🔒 Diputuskan: keterbatasan (K-8).** **Tabel `audit.audit_log` tidak punya tampilan UI.** Klaim "pemeriksa bisa menelusuri dokumen yang dihapus" hanya berlaku lewat akses basis data langsung. | tidak ditemukan pembaca di halaman | S (klaim skripsi) |
 | D-20 | **✅ SELESAI `8816524`.** Ketiga kolom kini `.references()` ke `master_jenis_permintaan` / `master_kategori_permintaan` / `master_detail_permintaan` (`ON DELETE restrict`, `ON UPDATE no action`, sama dengan `komponen_id`); migrasi `drizzle/0020_dokumen_transaksi_permintaan_fk.sql` (ditulis manual, idempoten). Sebelum migrasi dicek: 0 baris yatim dari 24 dokumen. Dibuktikan oleh tes integrasi pertama, `tests/integration/dokumen-transaksi-permintaan-fk.test.ts` (Postgres asli, transaksi di-ROLLBACK, harus gagal `23503`), dijalankan lewat `pnpm test:integration`. *Temuan asli:* **`dokumen_transaksi.jenis/kategori/detail_permintaan_id` tanpa FK.** Integritasnya hanya dijaga aplikasi. Gambarkan sebagai relasi logis di ERD, atau tambahkan FK. | skema `dokumen-transaksi.ts:58-60`; migrasi 0000 | S |
-| D-21 | **Kerangka Bab IV tertinggal dari kode:** UC-01 masih "email"; UC-23 masih "jenis dokumen"; UC-13/UC-14 belum menyebut Tahun Anggaran; Monitoring Dokumen Tim belum ada; Activity Log PJ Kinerja lintas pengguna belum disebut. | `docs/planning/ubah-alur-v1/kerangka-bab-iv.md` (commit `171fc5d`) vs B.1 | **T** (dokumen) |
-| D-22 | **PPK/PPSPM bisa membaca semua dokumen** pada status tertentu tanpa pembatasan unit/kegiatan. Sesuai desain satu satker; sebutkan sebagai asumsi. | `document-file-access.ts:381-395` | R |
+| D-21 | **📝 Diputuskan: tugas penulisan pemilik** (kerangka diperbarui sendiri oleh pemilik; acuannya tabel B.1). **Kerangka Bab IV tertinggal dari kode:** UC-01 masih "email"; UC-23 masih "jenis dokumen"; UC-13/UC-14 belum menyebut Tahun Anggaran; Monitoring Dokumen Tim (UC-25) belum ada; Log Aktivitas PJ Kinerja lintas pengguna belum disebut; UC-14 belum menyebut lampiran wajib; UC-18–UC-21 belum menyebut filter periode (Bulanan) serta preview/unduh lampiran dan dokumen tambahan KSBU di UC-20/UC-21. | `docs/planning/ubah-alur-v1/kerangka-bab-iv.md` (commit `171fc5d`) vs B.1 | **T** (dokumen) |
+| D-22 | **✅ Diputuskan: sesuai proses bisnis** (asumsi satu satker, tulis di Bab IV). Hak baca lintas pegawai **tidak dibatasi per unit/kegiatan**, tetapi **dibatasi per jenis dan status dokumen** sesuai peran: **PPK** hanya dokumen **material** berstatus Divalidasi PPK, Menunggu PPSPM, Perlu Revisi, atau Selesai; **PPSPM** hanya dokumen **material** berstatus Menunggu PPSPM, Selesai, atau Perlu Revisi yang harus diperbaiki PPK; **KSBU** dokumen Selesai; **PJ Kinerja** satu-satunya peran yang membaca **semua dokumen final**, yaitu material Selesai **dan non-material Tersimpan** (sejak `e6ba99c`). Dokumen non-material tidak pernah terbuka untuk PPK/PPSPM karena statusnya selalu Tersimpan. | `document-file-access.ts:344-402` (`canSessionReadDocument`, `canPpkReadDocument`, `canPpspmReadDocument`), `dokumen.$id.ts:58-93` | R |
 | D-23 | **✅ SELESAI `b4ee1a8`** (baru, dari audit D-3). 11 handler GET master data (`master-fungsi`, `master-kegiatan`, `master-komponen` +`$id`, `master-jenis` +`$id`, `master-kategori` +`$id`, `master-detail` +`$id`, `master-kelengkapan`) sebelumnya bertanda "Public read endpoint" dan bisa dibaca siapa pun di LAN tanpa login. Kini memakai `requireAnyLocalSession` (401 tanpa sesi; peran apa pun boleh, karena semua pemanggilnya sudah di halaman yang dijaga peran). Mutasi tetap ADMIN-only. Endpoint lain tanpa `getLocalServerSession` langsung memakai pembungkus yang memeriksa sesi + peran (`requireBerkasArsipApiSession`, `requireManualArsipApiSession`, `createDocumentLampiranAccessUrlResponse`, `authorizeCleanupRequest`) atau memang publik (`auth/login`, `auth/logout`, `auth/session`; `auth/role-switch` memeriksa token sesi sendiri). | `src/routes/api/master-*.ts` | S (klaim keamanan) |
 | D-24 | **✅ SELESAI `38f5900`.** `updateDokumenSchema` kini `.strict()` dan hanya berisi `lampiranUrls`, `nominalRealisasi`, `keteranganDetail`, `namaDokumen` — persis yang dikirim `edit.tsx` (Non-Material) dan `revisi.tsx` (Material, sebelum resubmit). `kegiatanId`, `fungsiId`, `komponenId`, `jenisPermintaanId`, `kategoriPermintaanId`, `detailPermintaanId`, `tahun`, `tanggal`, `judul` ditolak 400 sebelum dokumen dibaca. *Temuan asli:* **`PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
-| D-25 | **(baru, dari T-13) `updated_at` = "kapan baris terakhir ditulis", bukan murni "kapan status terakhir berubah".** Monitoring Dokumen Tim menghitung "lama tertahan" dari `updated_at` (`monitoring-dokumen-tim.tsx:84-85`, `daysSinceUpdate`) — ini benar untuk menunjukkan lama di PPK/PPSPM/revisi-belum-dikirim-ulang, TAPI kolom itu juga ter-update saat Pegawai mengedit lampiran/nominal di masa revisi tanpa mengubah status. Klaim "sejak perubahan status terakhir" perlu kalimat yang lebih presisi: "sejak dokumen terakhir ditulis (submit, aksi persetujuan, atau edit saat revisi)". | `src/routes/pegawai/monitoring-dokumen-tim.tsx:84-85,759-762` | R (dokumentasi) |
-| D-26 | **✅ SELESAI `37517ff`.** `GET /api/laporan/kinerja` kini juga membaca `arsip.manual_arsip`, digabung dan diurutkan bersama `dokumen_transaksi` berdasarkan `updated_at`. Baris manual: `status='COMPLETED'` (dianggap terealisasi sejak diarsipkan), `sumber='MANUAL'`, `tahun` dari `tanggal` dokumen sendiri (bukan tahun anggaran berkas — konsisten dengan Q5), baris `DIMUSNAHKAN` dikecualikan. **Sengaja dibatasi** hanya untuk Monitoring Nominal Realisasi (PPK/PPSPM) — tidak untuk Laporan Kinerja PJ Kinerja, karena halaman itu membuka detail dokumen lewat endpoint yang tidak ada untuk `manual_arsip`. UI menandai baris manual "Penambahan Dokumen (KSBU)" di daftar dan dialog metadata, supaya tidak dikira melalui persetujuan PPK/PPSPM. *Temuan asli:* Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi, walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | R (selesai) |
+| D-25 | **🔒 Diputuskan: keterbatasan (K-9), cukup kalimat yang tepat di skripsi.** **(baru, dari T-13) `updated_at` = "kapan baris terakhir ditulis", bukan murni "kapan status terakhir berubah".** Monitoring Dokumen Tim menghitung "lama tertahan" dari `updated_at` (`monitoring-dokumen-tim.tsx:84-85`, `daysSinceUpdate`) — ini benar untuk menunjukkan lama di PPK/PPSPM/revisi-belum-dikirim-ulang, TAPI kolom itu juga ter-update saat Pegawai mengedit lampiran/nominal di masa revisi tanpa mengubah status. Klaim "sejak perubahan status terakhir" perlu kalimat yang lebih presisi: "sejak dokumen terakhir ditulis (submit, aksi persetujuan, atau edit saat revisi)". | `src/routes/pegawai/monitoring-dokumen-tim.tsx:84-85,759-762` | R (dokumentasi) |
+| D-26 | **✅ SELESAI `37517ff`.** `GET /api/laporan/kinerja` kini juga membaca `arsip.manual_arsip`, digabung dan diurutkan bersama `dokumen_transaksi` berdasarkan `updated_at`. Baris manual: `status='COMPLETED'` (dianggap terealisasi sejak diarsipkan), `sumber='MANUAL'`, `tahun` dari `tanggal` dokumen sendiri (bukan tahun anggaran berkas — konsisten dengan Q5), baris `DIMUSNAHKAN` dikecualikan. Awalnya dibatasi hanya untuk Monitoring Nominal Realisasi (PPK/PPSPM), karena Laporan Kinerja membuka detail lewat endpoint yang tidak ada untuk `manual_arsip`. **Sejak `e6ba99c` diperluas ke Laporan Kinerja**, dengan endpoint read-only `/api/laporan/manual-arsip/**` dan dialog `ManualArsipDetailDialog` (lihat PB-7.2, PB-8.3). UI menandai baris manual "Penambahan Dokumen (KSBU)" di daftar dan di dialog detail (kolom "Sumber"), supaya tidak dikira melalui persetujuan PPK/PPSPM. *Temuan asli:* Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi, walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | R (selesai) |
+| D-27 | **✅ SELESAI** (commit setelah `e6ba99c`). Catatan cakupan di header kini mengikuti halaman: Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU, kecuali yang berkasnya sudah dimusnahkan"; Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU. Tidak termasuk berkas yang sudah dimusnahkan atau lampiran yang sudah dibersihkan" (`ScopeNoteContext`). *Temuan asli:* kotak catatan di header ketiga halaman berbunyi "Hanya dokumen material berstatus Selesai, dan berkas belum dimusnahkan", padahal Laporan Kinerja juga memuat non-material dan kedua halaman memuat dokumen tambahan KSBU. | `src/components/kinerja/MonitoringRealisasiView.tsx` (`KinerjaHeader`, `ReportBackHeader`) | R (teks UI) |
 
 **Pertanyaan yang butuh keputusan Anda**
 
@@ -1058,6 +1132,29 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | Q3 | D-1 dan D-2 diperbaiki sebelum pengujian sistem, atau dicatat sebagai keterbatasan? | ✅ **Diputuskan: diperbaiki.** D-1 (`69f7fbe`), D-2 (`f26ee7f`). |
 | Q4 | D-14: tambah kasus uji `KEMBALIKAN` di `tests/fsm.test.ts` sebelum Bab V, supaya klaim "seluruh transisi lolos unit testing" benar? | ✅ **Diputuskan: ditambahkan.** `89a93bd` — seluruh 8 transisi kini punya tes unit. |
 | Q5 | Kolom "tahun" dokumen dan "tahun anggaran" berkas dibiarkan independen (dokumen TA 2025 bisa masuk berkas TA 2026)? | ✅ **Diputuskan: dibiarkan independen.** Sesuai desain saat ini (dokumen bisa realistis diajukan di TA berbeda dari saat diberkaskan). Tulis sebagai catatan desain di Bab IV, bukan keterbatasan; tidak ada perubahan kode. |
+| Q6 | Filter periode dipakai bersama semua halaman laporan? Bawaan per halaman? | ✅ **Diputuskan:** satu `PeriodeSelector` + mode Bulanan; bawaan Triwulan untuk Nominal Realisasi, Laporan Kinerja, Laporan Kegiatan; bawaan Bulanan untuk Laporan Saya (`e6ba99c`). |
+| Q7 | Dokumen tambahan KSBU masuk Laporan Kinerja? Lampirannya bisa dibuka dari laporan? Nominal Realisasi tetap "metadata saja"? | ✅ **Diputuskan:** masuk Laporan Kinerja; lampiran wajib minimal 1 dan bisa di-Preview/Unduh; aturan "metadata saja" di Nominal Realisasi **dicabut** untuk semua dokumen; PJ Kinerja diberi hak baca dokumen final (`e6ba99c`). |
+| Q8 | Klaim cakupan Laporan Kinerja untuk skripsi? | ✅ **Diputuskan: klaim terbatas** beserta lima pengecualian (lihat PB-7.2). |
+| Q9 | Sisa kode lama (D-16) dan "Ingat saya" (D-9) dihapus sampai mana? | ✅ **Diputuskan: Golongan 1 saja** (kode mati dihapus; label riwayat lama dan sisa skema database dipertahankan, tanpa migrasi). |
+| Q10 | Temuan terbuka D-6, D-7, D-8, D-10, D-13, D-15, D-19, D-25? | ✅ **Diputuskan: dicatat sebagai keterbatasan sistem** (K-1 s.d. K-9 di bawah). D-22: sesuai proses bisnis. D-21: tugas penulisan pemilik. |
+
+**Status akhir Bagian D:** tidak ada lagi temuan tanpa keputusan. Semua sudah **selesai diperbaiki**, **diputuskan sebagai desain/proses bisnis**, **dicatat sebagai keterbatasan**, atau **catatan penulisan**.
+
+### Daftar keterbatasan sistem (bahan Bab V, subbab keterbatasan / saran pengembangan)
+
+| # | Keterbatasan | Asal | Dampak | Saran pengembangan |
+|---|---|---|---|---|
+| K-1 | Bila Admin memberi akun peran ADMIN bersama peran lain, sistem diam-diam hanya menyimpan ADMIN, tanpa pesan peringatan. | D-6 | Admin bisa mengira akun itu juga punya peran lain. | Tolak kombinasi tersebut dengan pesan yang jelas di formulir Master User. |
+| K-2 | Aturan "minimal satu Admin aktif" diperiksa tanpa kunci baris, sehingga dua permintaan yang benar-benar bersamaan secara teori bisa menonaktifkan dua Admin terakhir. | D-7 | Sangat kecil di lingkungan satu satker. | Periksa dan ubah di dalam satu transaksi dengan kunci baris (`SELECT … FOR UPDATE`). |
+| K-3 | Batas percobaan login (5 kali gagal per 10 menit) disimpan di memori proses: ter-reset saat server dimulai ulang, tidak berbagi antarproses, dan kuncinya memakai IP dari header yang bisa dipalsukan bila tanpa proxy tepercaya. | D-8 | Perlindungan brute-force lebih lemah dari seharusnya, meski aplikasi hanya di LAN. | Simpan hitungan di basis data atau Redis; percayai header IP hanya dari proxy yang dikenal. |
+| K-4 | Untuk DOCX/XLSX, pemeriksaan isi file hanya membuktikan file itu berformat ZIP; jenis Office-nya mengikuti tipe yang dilaporkan browser. | D-10 | File ZIP lain yang diganti ekstensinya bisa lolos (pengunggah tetap pengguna internal yang login). | Periksa struktur internal paket Office (mis. `[Content_Types].xml`). |
+| K-5 | Pembersihan lampiran non-material menghapus file lebih dulu, baru menandai basis data; tidak atomik. | D-13 | Bila penandaan gagal, file sudah hilang tetapi dokumen belum berlabel "dibersihkan" (aksi bisa diulang). | Tandai lebih dulu dalam transaksi, lalu hapus file dengan mekanisme antrean/retry. |
+| K-6 | Tes end-to-end (Playwright, 67 kasus) tidak punya skrip `pnpm` dan tidak dijalankan rutin. | D-15 | Regresi tampilan tidak tertangkap otomatis. | Tambah skrip `test:e2e` dan jalankan di pipeline dengan basis data uji. |
+| K-7 | Skema basis data masih menyimpan sisa desain lama: kolom `sessions.remember_me`, nilai `INAKTIF` dan peristiwa `BERKAS_DIPINDAHKAN_KE_INAKTIF` di constraint, kolom siklus lama `manual_arsip`, dan kolom `retensi_inaktif`/`masa_inaktif_berakhir`. | D-16 (Golongan 3), D-9 | Tidak memengaruhi fungsi; hanya menambah kolom yang tidak bermakna. | Migrasi pembersihan skema setelah memastikan tidak ada data lama yang memakainya. |
+| K-8 | Tabel audit (`audit.audit_log`: dokumen dihapus, lampiran/berkas dibersihkan) tidak punya halaman di aplikasi; hanya bisa dibaca langsung dari basis data. | D-19 | Pemeriksa tidak bisa menelusuri jejak itu dari aplikasi. | Tambah halaman baca-saja Log Audit untuk Admin/PJ Kinerja. |
+| K-9 | "Lama tertahan" di Monitoring Dokumen Tim dihitung dari waktu terakhir dokumen ditulis (`updated_at`), bukan murni waktu perubahan status. | D-25 | Mengedit lampiran saat revisi ikut mereset hitungan. | Simpan kolom khusus `status_changed_at`, atau hitung dari riwayat `log_aktivitas`. |
+
+Selain keterbatasan di atas, **asumsi desain** yang perlu ditulis di Bab IV: aplikasi untuk **satu satker** (D-22); satu Cara Pembayaran = satu SPM per TA (D-4/Q2); tahun dokumen independen dari TA berkas (Q5); aplikasi mandiri tanpa integrasi (§1).
 
 ---
 
@@ -1105,12 +1202,13 @@ Seluruh komponen (DB, auth, file) lokal; tidak perlu internet. Postur: handoff i
 |---|---|---|
 | Hash kata sandi | Argon2id, memori 64 MiB, time cost 3, parallelism 1; hanya menerima hash `$argon2id$` | `src/lib/auth/password.ts:4,9-14,37-39` |
 | Token sesi | 32 byte acak (base64url); disimpan sebagai SHA-256; lookup via hash | `session-constants.ts:6-7`, `session-token.ts:13-25` |
-| Masa sesi | 8 jam (`SESSION_DURATION_SECONDS`) | `session-constants.ts:9` |
+| Masa sesi | 8 jam (`SESSION_DURATION_SECONDS`) untuk semua sesi; tidak ada opsi "Ingat saya" (dihapus, D-9) | `session-constants.ts:9`, `local-auth-service.ts` |
 | Cookie | `dms_session` HttpOnly, SameSite=Lax, Secure di production atau bila `DMS_SESSION_COOKIE_SECURE`; `dms_active_role` tidak HttpOnly (hanya UI) | `session-cookies.ts` |
 | Rate-limit login | 5 gagal / 10 menit → jeda 15 menit, 429 + `Retry-After`; kunci `identifier + IP`; hanya 401 yang dihitung | `login-rate-limit.ts:3-5`, `login.ts:60` |
 | Pencabutan sesi | logout (satu sesi); ganti/reset sandi & nonaktif (semua sesi) | `logout.ts:24`, `local-user-passwords.ts:44,92`, `local-user-mutations.ts:328` |
 | CSRF | same-origin untuk POST/PUT/PATCH/DELETE (Origin → Referer; host, `APP_URL`, `X-Forwarded-*`) | `same-origin.ts:3` |
 | URL lampiran | HMAC-SHA256 `v1.<payload>.<sig>`, `timingSafeEqual`; pratinjau 15 menit, unduh 1 jam; terikat pengguna + sesi | `file-access-token.ts:27,210-216`, `document-file-access.ts:56-57` |
+| Lampiran manual & berkas | tanpa token; sesi + peran dicek tiap permintaan; jalur baca untuk laporan terpisah dari jalur tulis KSBU | `requireManualArsipApiSession`, `requireLaporanManualArsipSession` (`manual-arsip.ts:197,215`) |
 | Unggah | 5 MB; 8 ekstensi; 7 MIME; pasangan ekstensi↔MIME; magic bytes; sanitasi nama | `document-upload-policy.ts`, `local-upload.ts` |
 | Aksi destruktif | frasa ketik-persis ditegakkan server (`BERSIHKAN`, `BERSIHKAN FILE BERKAS`); kandidat file dari data, bukan input klien; idempoten | §PB-6.3, PB-9 |
 | Batas | ZIP 500 dokumen (413), file ZIP > 250 MB dilewati, pembersihan 200/permintaan | `document-zip.ts:71-72`, `pembersihan.ts:21` |
@@ -1122,6 +1220,8 @@ Seluruh komponen (DB, auth, file) lokal; tidak perlu internet. Postur: handoff i
 - **Profil:** foto profil pengguna.
 - **Umpan balik:** toast global dan dialog konfirmasi terpusat, dengan mode ketik-persis.
 - **Formulir:** guard "perubahan belum disimpan"; unggahan tertunda dibuang saat halaman ditinggalkan.
+- **Konsistensi komponen:** satu `PeriodeSelector` untuk semua halaman laporan; satu gaya daftar lampiran (kartu + tombol Preview/Unduh + modal pratinjau PDF) untuk dokumen alur (`AttachmentViewer`) dan dokumen tambahan KSBU (`ManualArsipAttachmentViewer`); dialog detail yang sama di Laporan Saya, Laporan Kegiatan, Nominal Realisasi, dan Laporan Kinerja.
+- **Login:** tombol lihat/sembunyikan kata sandi.
 - **Bantuan** (`/bantuan`, 354 baris): tautan di footer sidebar (`AppSidebar.tsx:271`), layout (`AppLayout.tsx:464`), dan halaman login.
 
 ### G. Catatan istilah "DMS"
@@ -1144,6 +1244,11 @@ Aplikasi ini bukan Document Management System klasik: tidak ada versioning, penc
 | `PATCH /api/dokumen/$id/nominal`, `POST /api/dokumen`, jalur Draf | dihapus |
 | `RoleSwitcher.tsx` | perpindahan peran di `AppLayout.tsx` |
 | Orkestrator submit runtime | dihapus (`fc59b44`) |
+| Rute `/dokumen`, `/dokumen/aju`, `/dokumen/saya`, `/dokumen/$id(/edit)` | dihapus (D-16); pakai `/pegawai/dokumen/**` |
+| `POST /api/dokumen/rename-pending`, parameter `useLocal*DryRun` | dihapus (D-16) |
+| "Ingat saya" (`REMEMBER_ME_DURATION_SECONDS`) | dihapus (D-9); sesi selalu 8 jam |
+| "Activity Log", "Settings" (label menu) | "Log Aktivitas", "Pengaturan Aplikasi" (D-5) |
+| Nominal Realisasi "metadata saja" | dicabut; detail + lampiran bisa dibuka (`e6ba99c`) |
 
 ---
 

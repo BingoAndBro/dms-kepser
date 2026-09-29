@@ -1,6 +1,6 @@
 # Penjelasan Proyek: Repositori Dokumen Kegiatan — Penyimpanan, Persetujuan, dan Pemberkasan
 
-> **Versi final**: disinkronkan dengan kode branch `migration/postgres-local`, commit HEAD `e6ba99c` (filter periode bersama + Bulanan, lampiran dokumen manual KSBU wajib dan bisa dibuka di laporan) ditambah perbaikan teks header Laporan Kinerja (D-27) dan pembersihan kode lama (D-16, D-9), 28 September 2026. Seluruh temuan di Bagian D sudah punya keputusan. Versi sebelumnya: `b6c3292` (27 September 2026) dan `penjelasan-proyek-aplikasi-lama.md` (commit `7927ca5`).
+> **Versi final**: disinkronkan dengan kode branch `migration/postgres-local`, commit HEAD `e6ba99c` (filter periode bersama + Bulanan, lampiran dokumen manual KSBU wajib dan bisa dibuka di laporan) ditambah perbaikan teks header Laporan Kinerja (D-27) dan pembersihan kode lama (D-16, D-9), 28 September 2026, serta dokumen tambahan KSBU di Laporan Kegiatan dan aturan "berkas dimusnahkan" yang seragam (D-28, commit `93eeb17`, 29 September 2026). Seluruh temuan di Bagian D sudah punya keputusan. Versi sebelumnya: `b6c3292` (27 September 2026) dan `penjelasan-proyek-aplikasi-lama.md` (commit `7927ca5`).
 >
 > Dokumen rancangan diagram yang menyertai dokumen ini: `rancangan-erd.md`, `rancangan-sequence-diagram.md`, `rancangan-behavioral-state-diagram.md` (folder yang sama).
 >
@@ -98,6 +98,7 @@ Aturan peran:
 > - **Pembersihan unggahan tertunda** masuk PB-6.5 (baru).
 > - **Filter periode bersama (Bulanan/Triwulan/Tahunan/Seluruh/Kustom)** di semua halaman laporan masuk PB-7.1/7.2.
 > - **Dokumen tambahan KSBU di Laporan Kinerja & Nominal Realisasi (beserta lampirannya)** masuk PB-7.2 dan PB-8.3.
+> - **Dokumen tambahan KSBU di Laporan Kegiatan (D-28)** masuk PB-7.1 dan PB-8.3.
 
 ---
 
@@ -436,13 +437,23 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
 - **Solusi.**
   - **Laporan Saya** (`/pegawai/laporan/saya`): dokumen milik sendiri.
-  - **Laporan Kegiatan** (`/pegawai/laporan/kegiatan`, grup PJ Kegiatan): dokumen **final** (Selesai atau Tersimpan) dari semua kegiatan yang dipimpin (`scope=final`, `src/lib/laporan/kegiatan-scope.ts:12-15`).
+  - **Laporan Kegiatan** (`/pegawai/laporan/kegiatan`, grup PJ Kegiatan): dokumen **final** (Selesai atau Tersimpan) dari semua kegiatan yang dipimpin (`scope=final`, `src/lib/laporan/kegiatan-scope.ts:12-15`), **ditambah dokumen tambahan KSBU** (`arsip.manual_arsip`) dari kegiatan yang sama (D-28, `93eeb17`).
 
-  Keduanya punya filter bertingkat, **filter periode**, dan ekspor ZIP. Server hanya mengembalikan dokumen dari kegiatan milik penugasan pemanggil (`src/routes/api/laporan/kegiatan.ts:59-68`).
+  Keduanya punya filter bertingkat, **filter periode**, dan ekspor ZIP. Server hanya mengembalikan dokumen dari kegiatan milik penugasan pemanggil (`src/routes/api/laporan/kegiatan.ts:83-93`); untuk dokumen tambahan KSBU penyaringan yang sama dilakukan di server lewat `manual_arsip.kegiatan_id ∈ kegiatan yang dipimpin` (`:153-162`, `listManualRealisasiRows` di `src/lib/laporan/manual-realisasi.ts:90`). `manual_arsip` punya kolom `kegiatan_id` sendiri (FK ke `master_kegiatan`), jadi tidak perlu lewat Komponen.
 
-  **Filter periode** memakai komponen bersama `PeriodeSelector` (`src/components/laporan/PeriodeSelector.tsx`), yang sama dengan Nominal Realisasi dan Laporan Kinerja (PB-7.2). Kedua halaman memuat semua dokumen sekali, lalu menyaring di browser dengan `isTanggalInPeriode` (`src/lib/laporan/periode.ts:121`) berdasarkan tanggal dokumen. Periode bawaan:
+  **Aturan Laporan Kegiatan sejak D-28** (sama dengan Nominal Realisasi, PB-7.2, lewat helper bersama `src/lib/laporan/manual-realisasi.ts`):
+  - dokumen tambahan KSBU dianggap "Selesai" sejak diberkaskan, diberi `sumber = 'MANUAL'`, dan ditandai "· Penambahan Dokumen (KSBU)" di daftar serta kolom "Sumber" di dialog detail (`ManualArsipDetailDialog`);
+  - dokumen material tanpa Komponen tidak dimuat (`kegiatan.ts:144-146`), seperti di Nominal Realisasi;
+  - dokumen (alur maupun tambahan KSBU) yang berkasnya **sudah dimusnahkan tetap ditampilkan** dengan penanda `berkas_dimusnahkan` (`kegiatan.ts:211,251`), tetapi **nominalnya tidak dihitung** dalam total: nominal ditampilkan dicoret dengan keterangan "Tidak dihitung · berkas dimusnahkan", dan dialog detail dokumen tambahan KSBU menampilkan pesan bahwa nominalnya tidak lagi dihitung. Total memakai `countedNominalRealisasi` (`src/lib/laporan/kegiatan-scope.ts:63`); dokumen non-material juga tidak dihitung karena tidak bernominal;
+  - kartu "Total Nominal Realisasi" dan total per kegiatan di daftar ikut menghitung dokumen tambahan KSBU, dengan filter periode yang sama;
+  - header menampilkan catatan cakupan (`LAPORAN_KEGIATAN_SCOPE_NOTE`, `src/routes/pegawai/laporan/kegiatan.tsx:63`): "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU dari kegiatan yang Anda pimpin. Dokumen yang berkasnya sudah dimusnahkan tetap ditampilkan, tetapi nominal realisasinya tidak lagi dihitung.";
+  - ekspor ZIP hanya berisi dokumen alur, karena `POST /api/laporan/kegiatan/export-zip` hanya membaca `dokumen_transaksi`; dialog ekspor menyebutkannya.
+
+  Akibatnya, **untuk satu kegiatan dan satu periode, total di Laporan Kegiatan sama dengan total di Nominal Realisasi**. Yang boleh berbeda hanya jumlah baris: Laporan Kegiatan juga menampilkan dokumen non-material dan dokumen yang berkasnya dimusnahkan, keduanya tanpa nominal yang dihitung. Kesamaan ini diuji di `tests/unit/laporan/kegiatan-route.test.ts`.
+
+  **Filter periode** memakai komponen bersama `PeriodeSelector` (`src/components/laporan/PeriodeSelector.tsx`), yang sama dengan Nominal Realisasi dan Laporan Kinerja (PB-7.2). Kedua halaman memuat semua dokumen sekali, lalu menyaring di browser dengan `isTanggalInPeriode` (`src/lib/laporan/periode.ts:121`, dipanggil di `src/routes/pegawai/laporan/kegiatan.tsx:235`). **Dasar tanggalnya adalah tanggal dokumen**: `dokumen_transaksi.tanggal` (diisi pengaju saat membuat dokumen) dan `manual_arsip.tanggal` untuk dokumen tambahan KSBU, **bukan** tanggal pengajuan, tanggal disetujui, atau `updated_at`. Nominal Realisasi memakai dasar yang sama tetapi menyaring di server (`src/routes/api/laporan/kinerja.ts:222-223` untuk dokumen alur, `listManualRealisasiRows` untuk dokumen manual). Catatan: kolom tabel di detail Laporan Kegiatan masih berlabel "Tanggal Pengajuan" (`kegiatan.tsx:1110`), padahal isinya tanggal dokumen. Periode bawaan:
   - **Laporan Saya: Bulanan**, yaitu bulan berjalan (`defaultPeriode('BULANAN')`, `src/routes/pegawai/laporan/saya.tsx:77`);
-  - **Laporan Kegiatan: Triwulan**, yaitu triwulan berjalan (`defaultPeriode('TRIWULAN')`, `src/routes/pegawai/laporan/kegiatan.tsx:154`). Periode berlaku juga saat membuka detail satu kegiatan.
+  - **Laporan Kegiatan: Triwulan**, yaitu triwulan berjalan (`defaultPeriode('TRIWULAN')`, `src/routes/pegawai/laporan/kegiatan.tsx:165`). Periode berlaku juga saat membuka detail satu kegiatan.
 
   Input "Mulai/Sampai Tanggal" di Filter Lanjutan daftar kini digantikan filter periode (rentang bebas tetap tersedia lewat mode Kustom). Ekspor ZIP Laporan Saya mengikuti periode yang aktif.
 - **Pengguna.** Pegawai; Ketua Tim.
@@ -453,18 +464,18 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
 
   | Halaman | Pengguna | Isi (`GET /api/laporan/kinerja`) |
   |---|---|---|
-  | Nominal Realisasi `/ppk/monitoring-realisasi` | PPK | material "Selesai" dengan komponen (`kinerja.ts:177-181`) **+ dokumen tambahan KSBU** (`arsip.manual_arsip`, `:247-273`) |
+  | Nominal Realisasi `/ppk/monitoring-realisasi` | PPK | material "Selesai" dengan komponen (`kinerja.ts:174-178`) **+ dokumen tambahan KSBU** (`arsip.manual_arsip`, `:246-251`, `listManualRealisasiRows`) |
   | Nominal Realisasi `/ppspm/monitoring-realisasi` | PPSPM | sama |
   | Laporan Kinerja `/penanggung-jawab-kinerja/laporan-kinerja` | PJ Kinerja | di atas **ditambah** non-material "Tersimpan" yang lampirannya belum dibersihkan (`scope=laporan_kinerja`, `:183-197`) |
 
   **Filter periode** (`PeriodeSelector`, dipakai bersama PB-7.1): **Bulanan**, Triwulan, Tahunan, Seluruh Periode, dan Kustom. Mode Bulanan menghitung hari terakhir bulan dengan benar, termasuk Februari tahun kabisat (`resolvePeriodeRange`, `src/lib/laporan/periode.ts`). Bawaan ketiga halaman ini tetap **Triwulan berjalan** (`normalizePeriodeSearch`, `src/components/kinerja/monitoringRealisasiNavigation.ts:69`). Periode disimpan di URL (`periode`, `tahun`, `triwulan`, `bulan`) dan dikirim ke server sebagai `start_date`/`end_date`.
 
   Aturan cakupan:
-  - `scope=laporan_kinerja` **hanya boleh dipakai PJ Kinerja**; peran lain mendapat 403 (`kinerja.ts:134-136`, commit `c40c469`).
-  - Dokumen dari berkas yang file-nya sudah dibersihkan **dikeluarkan** (`:150-167`); dokumen manual yang `DIMUSNAHKAN` juga dikeluarkan.
-  - **Dokumen tambahan KSBU ikut dihitung di ketiga halaman** (D-26, `37517ff`; diperluas ke Laporan Kinerja di `e6ba99c`). Dokumen manual dianggap "Selesai" sejak diarsipkan, diberi `sumber = 'MANUAL'`, dan di tabel diberi label "· Penambahan Dokumen (KSBU)" supaya tidak dikira melewati persetujuan PPK/PPSPM.
+  - `scope=laporan_kinerja` **hanya boleh dipakai PJ Kinerja**; peran lain mendapat 403 (`kinerja.ts:139-141`, commit `c40c469`).
+  - Dokumen alur maupun dokumen tambahan KSBU yang berkasnya sudah dimusnahkan **tidak ditampilkan dan nominalnya tidak dihitung** (`loadDestroyedArchiveIds`, `src/lib/laporan/manual-realisasi.ts:26`, dipanggil di `kinerja.ts:157`). Otoritasnya join `berkas_arsip_item → berkas_arsip` berstatus `DIMUSNAHKAN`. Sejak D-28 (`93eeb17`), join ini berlaku juga untuk dokumen tambahan KSBU. Sebelumnya hanya `manual_arsip.status_arsip` yang diperiksa, padahal kolom itu tidak ikut berubah saat berkasnya dimusnahkan, sehingga dokumen manual di berkas yang dimusnahkan masih terhitung (di data uji ada satu kasus seperti ini).
+  - **Dokumen tambahan KSBU ikut dihitung di ketiga halaman ini** (D-26, `37517ff`; diperluas ke Laporan Kinerja di `e6ba99c`), dan sejak D-28 juga di Laporan Kegiatan (PB-7.1). Dokumen manual dianggap "Selesai" sejak diarsipkan, diberi `sumber = 'MANUAL'`, dan di tabel diberi label "· Penambahan Dokumen (KSBU)" supaya tidak dikira melewati persetujuan PPK/PPSPM.
   - Maksimal 2000 baris per permintaan; bila terlampaui, muncul peringatan agar periode dipersempit.
-  - Header halaman menampilkan catatan cakupan sesuai halaman (D-27): Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU…", Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU…".
+  - Header halaman menampilkan catatan cakupan sesuai halaman (D-27, dipertegas D-28): Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU. Dokumen yang berkasnya sudah dimusnahkan tidak ditampilkan dan nominal realisasinya tidak lagi dihitung." (`MonitoringRealisasiView.tsx:111`), Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU…".
 
   **Detail dan lampiran dokumen** (sejak `e6ba99c`). Mengklik dokumen di ketiga halaman membuka detail beserta lampiran yang bisa di-**Preview** dan di-**Unduh**:
   - dokumen alur pengajuan → `DokumenDetailDialog` + `AttachmentViewer` (sama dengan halaman laporan lain);
@@ -542,7 +553,11 @@ Penambahan Dokumen ────────┘   (satu per Cara Pembayaran × Ta
   - file di dalam berkas: rute KSBU (`requireBerkasArsipApiSession`);
   - lampiran dokumen tambahan KSBU, dua pintu:
     - `/api/kasubag/manual-arsip/**`: baca dan tulis, hanya KSBU (`requireManualArsipApiSession`, `src/lib/manual-arsip.ts:197`);
-    - `/api/laporan/manual-arsip/$id` (+ `/attachments/$attachmentId/{preview,download}`): **baca saja**, untuk PJ Kinerja, PPK, PPSPM, dan KSBU, yaitu peran yang melihat dokumen itu di laporan (`requireLaporanManualArsipSession`, `:215`). Dokumen yang `DIMUSNAHKAN` dijawab 404 (detail) atau 410 (file).
+    - `/api/laporan/manual-arsip/$id` (+ `/attachments/$attachmentId/{preview,download}`): **baca saja**, untuk pihak yang melihat dokumen itu di laporan (`requireLaporanManualArsipSession`, `src/lib/manual-arsip.ts:222`):
+      - PJ Kinerja, PPK, PPSPM, dan KSBU, untuk semua dokumen tambahan KSBU (tidak berubah);
+      - **Ketua Tim** (akun berperan Pegawai), **hanya untuk dokumen yang kegiatannya ia pimpin** (sejak D-28, `93eeb17`). Server mencocokkan `manual_arsip.kegiatan_id` dengan `ketua_tim_assignments` milik pemanggil (`isKetuaTimOfManualArsipKegiatan`, `:249`).
+
+      Urutan pemeriksaan: sesi (401), peran, kepemilikan kegiatan (403), keberadaan (404), dimusnahkan (410). Ketua Tim yang bukan pemimpin kegiatan itu mendapat **403**. Id yang tidak ada juga dijawab 403 untuk Ketua Tim, supaya keberadaan dokumen kegiatan lain tidak bocor. Peran lain, termasuk Admin murni, mendapat 403. Sejak D-28, detail dokumen yang dimusnahkan (statusnya sendiri atau berkas penaungnya `DIMUSNAHKAN`) tetap mengembalikan metadata dengan penanda `dimusnahkan: true`, karena Laporan Kegiatan tetap menampilkannya. File-nya dijawab **410** (`isManualArsipInDestroyedBerkas` di rute preview/unduh, dan `status_arsip` di `createManualArsipAttachmentFileResponse`).
 - **Unggahan.** Maksimal **5 MB**. Server memeriksa ekstensi (pdf, doc, docx, xls, xlsx, jpg, jpeg, png), MIME yang dilaporkan, kecocokan ekstensi dengan MIME, dan **tanda tangan isi file** (magic bytes) (`src/lib/storage/local-upload.ts:107-140,229-259`; `src/lib/upload/document-upload-policy.ts`).
 - **Pengguna.** Semua aktor yang berhak.
 
@@ -682,6 +697,7 @@ Sampai `b6c3292`: 41 commit; 182 berkas di `src/` + `drizzle/` berubah (+4.632 /
 | 34 | Catatan header Laporan Kinerja "Hanya dokumen material berstatus Selesai…" (tidak sesuai isi) | Catatan cakupan berbeda untuk Nominal Realisasi dan Laporan Kinerja (D-27) | `MonitoringRealisasiView.tsx` (`ScopeNoteContext`); commit setelah `e6ba99c` |
 | 35 | Kode mati: rute `rename-pending`, cabang dry-run submit, cabang `MULTIPLE_OPEN_BERKAS`, tipe `AppUser`/`AppSession`, rute pengalih `/dokumen/*` | Dihapus; tombol dashboard Pegawai langsung ke `/pegawai/dokumen/aju` (D-16 Golongan 1) | commit setelah `e6ba99c` |
 | 36 | Kode "Ingat saya" 30 hari yang tidak terjangkau dari UI | Dihapus; semua sesi 8 jam; kolom `remember_me` tetap di skema (D-9) | `src/lib/auth/*`; commit setelah `e6ba99c` |
+| 37 | Laporan Kegiatan tanpa dokumen tambahan KSBU, sehingga totalnya bisa lebih kecil dari Nominal Realisasi; dokumen manual di berkas dimusnahkan masih terhitung di Nominal Realisasi | Laporan Kegiatan memuat dokumen tambahan KSBU (disaring per kegiatan di server); dokumen yang berkasnya dimusnahkan tampil dengan penanda, tanpa nominal yang dihitung; Ketua Tim bisa membuka lampirannya (hanya kegiatan yang ia pimpin); total sama dengan Nominal Realisasi (D-28) | `kegiatan.ts`, `manual-realisasi.ts`, `manual-arsip.ts`; commit `93eeb17` |
 
 ---
 
@@ -716,7 +732,7 @@ Penomoran UC mengikuti kerangka Bab IV (24 UC), **+1 UC baru diputuskan (Q1) →
 | UC-17 | Mengelola Klasifikasi Dokumen | KSBU | Master Klasifikasi Dokumen → `/kasubag/klasifikasi` | `/api/kasubag/klasifikasi(/$id)` | |
 | **M5 Pelaporan dan Pemantauan** |||||
 | UC-18 | Melihat Laporan Saya | Pegawai | Laporan Saya → `/pegawai/laporan/saya` | `GET /api/laporan/saya`, `POST …/export-zip` | Filter periode, bawaan **Bulanan** |
-| UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final` | Filter periode, bawaan **Triwulan** |
+| UC-19 | Melihat Laporan Kegiatan | Ketua Tim | PJ Kegiatan › Laporan Kegiatan → `/pegawai/laporan/kegiatan` | `GET /api/laporan/kegiatan?scope=final`, `GET /api/dokumen/$id`, `GET /api/laporan/manual-arsip/$id` | Filter periode (dasar: tanggal dokumen), bawaan **Triwulan**. Sejak D-28 (`93eeb17`) memuat dokumen tambahan KSBU dari kegiatan yang dipimpin, ditandai "Penambahan Dokumen (KSBU)", dengan detail + Preview/Unduh lampiran. Dokumen yang berkasnya dimusnahkan tetap tampil, tetapi nominalnya tidak dihitung. Total sama dengan Nominal Realisasi |
 | UC-25 | **Memantau Dokumen Tim** | Ketua Tim | PJ Kegiatan › Monitoring Dokumen Tim → `/pegawai/monitoring-dokumen-tim` | `GET /api/laporan/kegiatan?scope=monitoring` | ✅ **Diputuskan (Q1): UC baru**, bukan alur alternatif UC-19. **Belum ada di kerangka Bab IV** — tambahkan sebagai UC-25 di kerangka (lihat D-21). |
 | UC-20 | Memantau Nominal Realisasi | PPK, PPSPM | Nominal Realisasi → `/ppk/monitoring-realisasi`, `/ppspm/monitoring-realisasi` | `GET /api/laporan/kinerja`, `GET /api/dokumen/$id`, `GET /api/laporan/manual-arsip/$id` | Turut menghitung dokumen tambahan KSBU (D-26, `37517ff`), ditandai "Penambahan Dokumen (KSBU)". Detail + lampiran bisa di-Preview/Unduh untuk semua dokumen (`e6ba99c`). Periode bawaan Triwulan, ada mode Bulanan |
 | UC-21 | Melihat Laporan Kinerja | PJ Kinerja | Laporan Kinerja → `/penanggung-jawab-kinerja/laporan-kinerja` | `GET /api/laporan/kinerja?scope=laporan_kinerja`, `GET /api/dokumen/$id`, `GET /api/laporan/manual-arsip/$id` | Material Selesai + non-material Tersimpan + dokumen tambahan KSBU (`e6ba99c`); detail + lampiran Preview/Unduh; periode bawaan Triwulan |
@@ -979,16 +995,18 @@ Halaman per peran (berkas `.tsx`, termasuk layout dan `-components/`): pegawai 1
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 28-09-2026, setelah `e6ba99c`, D-27, dan pembersihan kode lama D-16/D-9):
-- **112 berkas tes lulus dari 112**;
-- **1.179 kasus lulus, 1 dilewati, 0 gagal** (1.180 total);
-- durasi 28,25 detik;
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 29-09-2026, setelah D-28 `93eeb17`):
+- **113 berkas tes lulus dari 113**;
+- **1.200 kasus lulus, 1 dilewati, 0 gagal** (1.201 total);
+- durasi 25,45 detik;
 - `tsc --noEmit` bersih;
 - riwayat:
   - `043449d` (sebelum perbaikan Bagian D): 108 berkas, 1.060 lulus + 1 dilewati;
   - setelah perbaikan Bagian D dan D-26: 112 berkas, 1.160 lulus + 1 dilewati;
   - `e6ba99c` + D-27: 113 berkas, 1.191 lulus + 1 dilewati (+`tests/unit/laporan/manual-arsip-route.test.ts`; mode Bulanan, akses PJ Kinerja, rute baca dokumen manual, lampiran manual wajib, guard tampilan);
   - setelah D-16: 112 berkas, 1.179 lulus + 1 dilewati. Tes rute `rename-pending` yang dihapus ikut dihapus, begitu pula tes cabang `MULTIPLE_OPEN_BERKAS`, dan dua tes dry-run diganti tes "parameter diabaikan";
+  - D-28 (`93eeb17`): 113 berkas, 1.200 lulus + 1 dilewati (+`tests/unit/laporan/kegiatan-route.test.ts`: dokumen tambahan KSBU per kegiatan, penanda dimusnahkan, tanpa Komponen, kesamaan total dengan Nominal Realisasi; `manual-arsip-route.test.ts` diperluas untuk akses Ketua Tim dan respons 410);
+  - proyek belum punya skrip lint (tidak ada ESLint/Biome di `package.json`), jadi pemeriksaan statis hanya `tsc --noEmit`;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`;
 - baris `stderr` yang muncul saat run berasal dari tes skenario gagal yang sengaja memicu log error, bukan kegagalan.
 
@@ -1121,7 +1139,8 @@ Dampak: **T** = Tinggi (bisa salah data/akses atau salah ditulis di skripsi), **
 | D-24 | **✅ SELESAI `38f5900`.** `updateDokumenSchema` kini `.strict()` dan hanya berisi `lampiranUrls`, `nominalRealisasi`, `keteranganDetail`, `namaDokumen` — persis yang dikirim `edit.tsx` (Non-Material) dan `revisi.tsx` (Material, sebelum resubmit). `kegiatanId`, `fungsiId`, `komponenId`, `jenisPermintaanId`, `kategoriPermintaanId`, `detailPermintaanId`, `tahun`, `tanggal`, `judul` ditolak 400 sebelum dokumen dibaca. *Temuan asli:* **`PATCH /api/dokumen/$id` menerima perubahan metadata yang tidak dikirim UI mana pun** (`kegiatanId`, `fungsiId`, `komponenId`, `tahun`, `tanggal`, `judul`) untuk dokumen Material saat revisi, tanpa menyelaraskan jenis/kategori/detail. Permintaan manual bisa membuat rantai tidak konsisten (mis. komponen baru dengan jenis lama). | `src/routes/api/dokumen.$id.ts`, `updateDokumenSchema` | S |
 | D-25 | **🔒 Diputuskan: keterbatasan (K-9), cukup kalimat yang tepat di skripsi.** **(baru, dari T-13) `updated_at` = "kapan baris terakhir ditulis", bukan murni "kapan status terakhir berubah".** Monitoring Dokumen Tim menghitung "lama tertahan" dari `updated_at` (`monitoring-dokumen-tim.tsx:84-85`, `daysSinceUpdate`) — ini benar untuk menunjukkan lama di PPK/PPSPM/revisi-belum-dikirim-ulang, TAPI kolom itu juga ter-update saat Pegawai mengedit lampiran/nominal di masa revisi tanpa mengubah status. Klaim "sejak perubahan status terakhir" perlu kalimat yang lebih presisi: "sejak dokumen terakhir ditulis (submit, aksi persetujuan, atau edit saat revisi)". | `src/routes/pegawai/monitoring-dokumen-tim.tsx:84-85,759-762` | R (dokumentasi) |
 | D-26 | **✅ SELESAI `37517ff`.** `GET /api/laporan/kinerja` kini juga membaca `arsip.manual_arsip`, digabung dan diurutkan bersama `dokumen_transaksi` berdasarkan `updated_at`. Baris manual: `status='COMPLETED'` (dianggap terealisasi sejak diarsipkan), `sumber='MANUAL'`, `tahun` dari `tanggal` dokumen sendiri (bukan tahun anggaran berkas — konsisten dengan Q5), baris `DIMUSNAHKAN` dikecualikan. Awalnya dibatasi hanya untuk Monitoring Nominal Realisasi (PPK/PPSPM), karena Laporan Kinerja membuka detail lewat endpoint yang tidak ada untuk `manual_arsip`. **Sejak `e6ba99c` diperluas ke Laporan Kinerja**, dengan endpoint read-only `/api/laporan/manual-arsip/**` dan dialog `ManualArsipDetailDialog` (lihat PB-7.2, PB-8.3). UI menandai baris manual "Penambahan Dokumen (KSBU)" di daftar dan di dialog detail (kolom "Sumber"), supaya tidak dikira melalui persetujuan PPK/PPSPM. *Temuan asli:* Nominal dokumen manual KSBU tidak masuk Monitoring Nominal Realisasi, walau `manual_arsip` sudah punya `nominal_realisasi` dan chain fungsi/kegiatan/komponen yang sama. | `src/routes/api/laporan/kinerja.ts`, `src/db/schema/arsip/manual-arsip.ts:33` | R (selesai) |
-| D-27 | **✅ SELESAI** (commit setelah `e6ba99c`). Catatan cakupan di header kini mengikuti halaman: Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU, kecuali yang berkasnya sudah dimusnahkan"; Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU. Tidak termasuk berkas yang sudah dimusnahkan atau lampiran yang sudah dibersihkan" (`ScopeNoteContext`). *Temuan asli:* kotak catatan di header ketiga halaman berbunyi "Hanya dokumen material berstatus Selesai, dan berkas belum dimusnahkan", padahal Laporan Kinerja juga memuat non-material dan kedua halaman memuat dokumen tambahan KSBU. | `src/components/kinerja/MonitoringRealisasiView.tsx` (`KinerjaHeader`, `ReportBackHeader`) | R (teks UI) |
+| D-27 | **✅ SELESAI** (commit setelah `e6ba99c`). Catatan cakupan di header kini mengikuti halaman: Nominal Realisasi "Dokumen material berstatus Selesai dan dokumen tambahan KSBU, kecuali yang berkasnya sudah dimusnahkan" (kalimat ini dipertegas di D-28 menjadi "…Dokumen yang berkasnya sudah dimusnahkan tidak ditampilkan dan nominal realisasinya tidak lagi dihitung."); Laporan Kinerja "Dokumen final: material Selesai, non-material Tersimpan, dan dokumen tambahan KSBU. Tidak termasuk berkas yang sudah dimusnahkan atau lampiran yang sudah dibersihkan" (`ScopeNoteContext`). *Temuan asli:* kotak catatan di header ketiga halaman berbunyi "Hanya dokumen material berstatus Selesai, dan berkas belum dimusnahkan", padahal Laporan Kinerja juga memuat non-material dan kedua halaman memuat dokumen tambahan KSBU. | `src/components/kinerja/MonitoringRealisasiView.tsx` (`KinerjaHeader`, `ReportBackHeader`) | R (teks UI) |
+| D-28 | **✅ SELESAI `93eeb17`** (29 September 2026). **Alasan: konsistensi total realisasi antarhalaman.** Laporan Kegiatan (UC-19) kini memuat dokumen tambahan KSBU dari kegiatan yang dipimpin pemanggil. Penyaringannya di server (`manual_arsip.kegiatan_id` ↔ `ketua_tim_assignments`) lewat helper yang sama dengan Nominal Realisasi (`src/lib/laporan/manual-realisasi.ts`). Keputusan pemilik tentang dokumen yang berkasnya dimusnahkan: **tetap ditampilkan di Laporan Saya dan Laporan Kegiatan dengan penanda, tetapi nominalnya tidak lagi dihitung**. Di Nominal Realisasi dan Laporan Kinerja dokumen itu tetap tidak ditampilkan. Pesan "nominal tidak lagi dihitung" ditampilkan di header Laporan Kegiatan dan Nominal Realisasi, di sel nominal, dan di dialog detail dokumen tambahan KSBU. "Dimusnahkan" untuk dokumen tambahan KSBU kini juga dilihat dari berkas penaungnya: sebelumnya hanya `manual_arsip.status_arsip`, yang tidak pernah berubah saat berkas dimusnahkan, sehingga dokumen manual di berkas yang dimusnahkan masih dihitung di Nominal Realisasi dan Laporan Kinerja. Dokumen material tanpa Komponen dikeluarkan dari Laporan Kegiatan (di DB pengembangan jumlahnya 0 dari 24, jadi tidak ada data yang dihapus). Rute baca `/api/laporan/manual-arsip/**` menerima Ketua Tim, **hanya** untuk kegiatan yang ia pimpin (lainnya 403; lihat PB-8.3). Tanpa perubahan skema atau migrasi. Diuji di `tests/unit/laporan/kegiatan-route.test.ts` (handler asli dijalankan terhadap fixture in-memory, termasuk uji kesamaan total) dan `manual-arsip-route.test.ts`. *Temuan asli:* Laporan Kegiatan tidak memuat `manual_arsip`, sehingga total realisasi satu kegiatan bisa lebih kecil daripada di Nominal Realisasi. Selain itu, dokumen alur dari berkas yang dimusnahkan dan dokumen material tanpa Komponen masih dijumlahkan di Laporan Kegiatan. | `src/routes/api/laporan/kegiatan.ts`, `src/lib/laporan/manual-realisasi.ts`, `src/lib/manual-arsip.ts:222`, `src/routes/pegawai/laporan/kegiatan.tsx` | R (selesai) |
 
 **Pertanyaan yang butuh keputusan Anda**
 

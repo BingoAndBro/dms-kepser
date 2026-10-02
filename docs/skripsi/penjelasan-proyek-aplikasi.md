@@ -1012,9 +1012,9 @@ Halaman per peran (berkas `.tsx`, termasuk layout dan `-components/`): pegawai 1
 
 ## C.4 Pengujian
 
-**Hasil run Vitest** (`pnpm test` = `vitest run`, 29-09-2026, setelah D-29 s.d. D-31, commit `ae8a698`):
+**Hasil run Vitest** (`pnpm test` = `vitest run`, 02-10-2026, setelah 3 kasus white-box FSM ditambahkan, `maxWorkers: 4` di `vitest.config.ts`):
 - **115 berkas tes lulus dari 115**;
-- **1.221 kasus lulus, 1 dilewati, 0 gagal** (1.222 total);
+- **1.224 kasus lulus, 1 dilewati, 0 gagal** (1.225 total);
 - `tsc --noEmit` bersih;
 - riwayat:
   - `043449d` (sebelum perbaikan Bagian D): 108 berkas, 1.060 lulus + 1 dilewati;
@@ -1023,6 +1023,7 @@ Halaman per peran (berkas `.tsx`, termasuk layout dan `-components/`): pegawai 1
   - setelah D-16: 112 berkas, 1.179 lulus + 1 dilewati. Tes rute `rename-pending` yang dihapus ikut dihapus, begitu pula tes cabang `MULTIPLE_OPEN_BERKAS`, dan dua tes dry-run diganti tes "parameter diabaikan";
   - D-28 (`93eeb17`): 113 berkas, 1.200 lulus + 1 dilewati (+`tests/unit/laporan/kegiatan-route.test.ts`: dokumen tambahan KSBU per kegiatan, penanda dimusnahkan, tanpa Komponen, kesamaan total dengan Nominal Realisasi; `manual-arsip-route.test.ts` diperluas untuk akses Ketua Tim dan respons 410);
   - D-29 s.d. D-31 (`ae8a698`): 115 berkas, 1.221 lulus + 1 dilewati (+`tests/unit/laporan/status-laporan.test.ts`: label dan filter Status, Laporan Kinerja sampai Kegiatan, badge File Dibersihkan; +`tests/unit/laporan/download-ticket.test.ts`: tiket sekali pakai, kedaluwarsa, terikat pengguna; `kegiatan-route.test.ts` diperluas: status arsip mengikuti berkas, Laporan Kinerja menampilkan dokumen dimusnahkan dan non-material yang dibersihkan dengan total tetap sama, ekspor ZIP dokumen tambahan KSBU, alur tiket POST → GET; `dokumen-get-ketua-tim-access.test.ts`: `berkas_dimusnahkan` di detail dokumen). Pada satu run, tes lama `master-data-read-requires-session.test.ts` sempat gagal sekali, tetapi lulus saat dijalankan ulang tanpa perubahan kode (kemungkinan soal waktu saat seluruh suite berjalan);
+  - unit testing white-box FSM (02-10-2026): 115 berkas, 1.224 lulus + 1 dilewati (+3 kasus `tests/fsm.test.ts`: REJECT dengan `revisionTarget` tak dikenal, REJECT oleh PPK di IN_PPSPM_APPROVAL, aksi di luar `FSMAction` ke cabang `default`; asersi semua kasus galat diperketat menjadi pencocokan pesan persis). Branch coverage `src/lib/fsm.ts` dari `tests/fsm.test.ts` 36/36 (penyedia V8, pemetaan AST); rincian di `hasil-unit-whitebox-fsm.md`. Angka resmi berasal dari run dengan Postgres Docker menyala (`docker compose -f infra/docker/postgres/docker-compose.yml up -d`). Dua run sebelumnya tanpa Postgres: run pertama gagal 1 kasus karena timeout `master-data-read-requires-session.test.ts` (5.553 ms > 5.000 ms), run kedua lulus semua;
   - tes baru di `kegiatan-route.test.ts` menjalankan **handler asli** terhadap basis data tiruan in-memory (`tests/unit/laporan/helpers/fake-laporan-db.ts`) yang mengevaluasi join dan filter. Kemampuannya menangkap kesalahan sudah dibuktikan: saat filter kegiatan, penanda dimusnahkan, atau aturan Laporan Kinerja sengaja dirusak, tes yang bersangkutan gagal;
   - proyek belum punya skrip lint (tidak ada ESLint/Biome di `package.json`), jadi pemeriksaan statis hanya `tsc --noEmit`;
 - satu-satunya kasus yang dilewati ada di `tests/unit/arsiparis/berkas-arsip-folder-pages.test.ts`;
@@ -1038,7 +1039,7 @@ Sebaran per modul (folder `tests/unit/*`, dihitung ulang 29-09-2026). Jumlah kas
 
 | Modul | Berkas | ± Kasus |
 |---|---|---|
-| Modul transisi status (`tests/fsm.test.ts`) | 1 | **49** (hasil run) |
+| Modul transisi status (`tests/fsm.test.ts`) | 1 | **52** (hasil run) |
 | arsiparis (pemberkasan, manual, ekspor berkas, klasifikasi) | 22 | ~312 |
 | storage (unggah, tertunda, akses file, pembersihan) | 25 | ~221 |
 | dokumen (submit, revisi, guard transisi, PATCH, akses baca, checklist kelengkapan, pembersihan, master data) | 27 | ~206 |
@@ -1051,7 +1052,7 @@ Sebaran per modul (folder `tests/unit/*`, dihitung ulang 29-09-2026). Jumlah kas
 | users | 3 | ~7 |
 | dashboard / db / profile / hooks / pegawai / styles | 7 | ~28 |
 
-Rincian 49 kasus `tests/fsm.test.ts`:
+Rincian 52 kasus `tests/fsm.test.ts`:
 
 | Kelompok | Kasus |
 |---|---|
@@ -1062,6 +1063,7 @@ Rincian 49 kasus `tests/fsm.test.ts`:
 | Validasi KEMBALIKAN (status sumber salah ditolak; hasil `revision_target` = USER) | 4 |
 | Kombinasi tidak valid | 7 |
 | Bentuk error | 2 |
+| Hasil keputusan tambahan (white-box: target REJECT tak dikenal, REJECT oleh PPK di IN_PPSPM_APPROVAL, cabang `default`) | 3 |
 
 Seluruh 8 transisi kini punya tes unit (D-14 selesai). Tes rute `POST /api/ppk/kembalikan/$id` ada di `tests/unit/dokumen/dokumen-transition-guards-route.test.ts`: 400 bila `revision_target` ≠ PPK atau status bukan NEED_REVISION, 403 untuk peran non-PPK, catatan otomatis memuat "Alasan penolakan PPSPM", 409 saat balapan.
 

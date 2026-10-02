@@ -1,22 +1,22 @@
-# Rancangan ERD Bab IV — Gambar 4.24–4.29 (27 Sept 2026, diverifikasi 28 Sept 2026)
+# Rancangan ERD Bab IV — Gambar 4.42–4.47 (27 Sept 2026, diverifikasi ulang 30 Sept 2026)
 
-> **Status:** **sudah diverifikasi terhadap kode** (28 Sept 2026, branch `migration/postgres-local`, HEAD `19e1b2a`). Siap digambar. Semua isian **CEK** dari draf 27 Sept sudah dijawab. Hasilnya ada di Bagian 0A.
-> **Nomor gambar** mengikuti "Daftar Gambar Bab IV - Status dan Revisi (27 Sept 2026)" (4.24–4.29), bukan kerangka Rev 9.1 (4.27–4.32).
-> **Sumber fakta:** `src/db/schema/**` dan `drizzle/0000`–`0020*.sql`. Rujukan `berkas:baris` di dokumen ini relatif terhadap `src/db/schema/`, kecuali yang diawali `drizzle/`.
-> **Perubahan terbesar dari draf:** relasi menjadi **52** (49 FK fisik + 3 logis), bukan 48. Empat FK `manual_arsip → users` terlewat di draf (R-49 s.d. R-52).
+> **Status:** **sudah diverifikasi terhadap kode** (28 Sept 2026, HEAD `19e1b2a`) dan **diverifikasi ulang 30 Sept 2026** (branch `migration/postgres-local`, HEAD `25d803a`, migrasi 0000–0021; bukti: `laporan-verifikasi-langkah5.md` bagian F). Siap digambar. Semua isian **CEK** dari draf 27 Sept sudah dijawab. Hasilnya ada di Bagian 0A; temuan 31–38 (30 Sept) membuat temuan 1, 9, 15, 16 sebagian atau seluruhnya usang.
+> **Nomor gambar** (diubah 30 Sept 2026): ERD memakai Gambar **4.42–4.47**, setelah 15 *sequence diagram* (4.11–4.39) dan dua *state machine* (4.40–4.41). Pemetaan dari nomor lama: 4.24→4.42, 4.25→4.43, 4.26→4.44, 4.27→4.45, 4.28→4.46, 4.29→4.47. Nomor lama 4.24–4.29 dari "Daftar Gambar Bab IV - Status dan Revisi (27 Sept 2026)" bentrok dengan *sequence* UC-08 s.d. UC-10. Kode `Gambar 4.xx` di seluruh dokumen ini sudah memakai nomor baru; kolom `4.xx` pada catatan temuan lama (0A.2) juga.
+> **Sumber fakta:** `src/db/schema/**` dan `drizzle/0000`–`0021*.sql`. Rujukan `berkas:baris` di dokumen ini relatif terhadap `src/db/schema/`, kecuali yang diawali `drizzle/`.
+> **Perubahan terbesar dari draf:** relasi menjadi **49** (46 FK fisik + 3 logis). Draf 27 Sept menulis 48; verifikasi 28 Sept menambah empat FK `manual_arsip → users` (R-49 s.d. R-52) sehingga 52; migrasi 0021 (29 Sept) menghapus tiga di antaranya (R-50 s.d. R-52), tersisa R-49 `archived_by`.
 > **Render:** blok Mermaid di draf 27 Sept lolos `@mermaid-js/mermaid-cli` v11. Blok yang dikoreksi di bawah memakai sintaks yang sama, tetapi **belum dirender ulang**. Render ulang sebelum diekspor.
 
 ---
 
 ## 0. Instruksi verifikasi (arsip prompt, sudah dikerjakan)
 
-Kamu memverifikasi rancangan ERD skripsi terhadap kode. **Otoritas tunggal: `src/db/schema/**` dan `drizzle/*.sql` (termasuk 0019 dan 0020).** Jangan pakai `docs/` atau `AGENTS.md` sebagai sumber fakta.
+Kamu memverifikasi rancangan ERD skripsi terhadap kode. **Otoritas tunggal: `src/db/schema/**` dan `drizzle/*.sql` (termasuk 0019, 0020, dan 0021).** Jangan pakai `docs/` atau `AGENTS.md` sebagai sumber fakta.
 
 1. **Inventaris entitas (Bagian 3).** Pastikan tepat 22 tabel domain, dengan skema yang benar. Laporkan tabel yang ada di skema tetapi tidak ada di daftar, dan sebaliknya. `drizzle.__drizzle_migrations` dan `master_jenis_dokumen` memang tidak digambar.
 2. **Daftar relasi (Bagian 4).** Untuk setiap baris R-01 s.d. R-48, cek: (a) nama kolom FK, (b) apakah FK fisik ada (`.references()` / `REFERENCES` di SQL) atau hanya logis, (c) `ON DELETE`, (d) **nullability kolom FK** — ini menentukan simbol di sisi induk (`||` bila NOT NULL, `|o` bila nullable), (e) unique pada kolom FK — ini menentukan sisi anak (`o|` bila unik, `o{` bila tidak).
-3. **Atribut (Bagian 5, blok Mermaid 4.25–4.29).** Cocokkan nama kolom dan tipe. Ganti setiap komentar "CEK" dengan nama/tipe yang benar. Tambahkan kolom yang terlewat hanya bila penting untuk narasi (PK, FK, kolom status, kolom yang dikenai UNIQUE/CHECK). Kolom audit rutin (`created_at`, `updated_at`) cukup disebut di laporan, tidak perlu masuk diagram kecuali sudah ada.
+3. **Atribut (Bagian 5, blok Mermaid 4.43–4.47).** Cocokkan nama kolom dan tipe. Ganti setiap komentar "CEK" dengan nama/tipe yang benar. Tambahkan kolom yang terlewat hanya bila penting untuk narasi (PK, FK, kolom status, kolom yang dikenai UNIQUE/CHECK). Kolom audit rutin (`created_at`, `updated_at`) cukup disebut di laporan, tidak perlu masuk diagram kecuali sudah ada.
 4. **Constraint (Bagian 6).** Cek setiap UNIQUE, partial unique, dan CHECK yang dikutip.
-5. **Keluaran:** tabel temuan `No | Lokasi (R-xx / entitas.kolom) | Tertulis di rancangan | Fakta di kode (berkas:baris) | Perbaikan`, lalu **blok Mermaid yang sudah dikoreksi** untuk 4.24–4.29. Jangan mengubah label relasi (kata kerja) kecuali salah makna.
+5. **Keluaran:** tabel temuan `No | Lokasi (R-xx / entitas.kolom) | Tertulis di rancangan | Fakta di kode (berkas:baris) | Perbaikan`, lalu **blok Mermaid yang sudah dikoreksi** untuk 4.42–4.47. Jangan mengubah label relasi (kata kerja) kecuali salah makna.
 
 ---
 
@@ -27,31 +27,31 @@ Kamu memverifikasi rancangan ERD skripsi terhadap kode. **Otoritas tunggal: `src
 | Bagian | Hasil |
 |---|---|
 | Inventaris entitas | **Cocok.** Tepat 22 tabel domain di 6 skema. Tabel yang pernah ada lalu dihapus migrasi (tidak digambar): `arsip.arsip`, `arsip.arsip_usul_musnah` (`drizzle/0009:13-15`), `arsip.manual_arsip_category` (`drizzle/0012:140`), `master.master_jenis_dokumen` (`drizzle/0019:15`). |
-| Relasi R-01 s.d. R-48 | 45 FK fisik dan 3 logis **cocok** untuk kolom, ON DELETE, nullability, dan unique. Dua nama kolom salah (R-43, R-45). **Empat FK fisik terlewat** → ditambah sebagai R-49 s.d. R-52. Total **52 relasi = 49 FK fisik + 3 logis**. |
-| Atribut | 9 koreksi nama/tipe/keterangan, 6 kolom ditambah (lihat 0A.2). |
-| Constraint | Satu nilai CHECK terlewat (`INAKTIF` pada `berkas_arsip.status_arsip`). Tiga CHECK tambahan tidak dikutip (`users` ×2, `berkas_arsip_item` ×1). Satu CHECK aktivitas berkas belum dirinci. Tiga CHECK `users` **hanya ada di SQL**, tidak di skema Drizzle. |
+| Relasi R-01 s.d. R-48 | 45 FK fisik dan 3 logis **cocok** untuk kolom, ON DELETE, nullability, dan unique. Dua nama kolom salah (R-43, R-45). **Empat FK fisik terlewat** → ditambah sebagai R-49 s.d. R-52. Total 52 relasi (28 Sept). **Update 30 Sept:** migrasi 0021 menghapus R-50 s.d. R-52; total sekarang **49 relasi = 46 FK fisik + 3 logis**. |
+| Atribut | 9 koreksi nama/tipe/keterangan, 6 kolom ditambah (lihat 0A.2). Update 30 Sept: `manual_arsip` kehilangan `status_arsip` dan enam kolom siklus lama (0021); `sessions.remember_me` masih ada tetapi selalu `false`; `users.last_login_at` masih ada tetapi tidak pernah ditulis. |
+| Constraint | (Update 30 Sept: CHECK `manual_arsip_status_arsip_check` dihapus migrasi 0021.) Satu nilai CHECK terlewat (`INAKTIF` pada `berkas_arsip.status_arsip`). Tiga CHECK tambahan tidak dikutip (`users` ×2, `berkas_arsip_item` ×1). Satu CHECK aktivitas berkas belum dirinci. Tiga CHECK `users` **hanya ada di SQL**, tidak di skema Drizzle. |
 | Relasi logis tanpa FK | Terkonfirmasi tepat **tiga**: `users.deactivated_by` (`auth/users.ts:36`; `drizzle/0000:14`, hanya indeks di `drizzle/0000:237`), `audit_log.entity_id` (`audit/audit-log.ts:40`, komentar "SENGAJA TANPA .references()" baris 31), `app_settings.updated_by` (`app/app-settings.ts:9`; `drizzle/0015:13`). |
 
 ### 0A.2 Tabel temuan
 
 | No | Lokasi | Tertulis di rancangan | Fakta di kode (berkas:baris) | Perbaikan |
 |---|---|---|---|---|
-| 1 | Bagian 4, jumlah relasi | 48 relasi (45 FK + 3 logis) | `manual_arsip` punya 5 FK ke `users`, bukan 1: `archived_by`, `created_by`, `inactivated_by`, `proposed_destroy_by`, `destroyed_by` (`arsip/manual-arsip.ts:51-52, 56-58, 62-63, 65-66, 68-69`; `drizzle/0003:51-57`, `drizzle/0006:28-29`) | Tambah R-49 (`archived_by`), R-50 (`inactivated_by`), R-51 (`proposed_destroy_by`), R-52 (`destroyed_by`). Semua nullable, NA → `\|o--o{`. Total 52 |
+| 1 | Bagian 4, jumlah relasi | 48 relasi (45 FK + 3 logis) | **[Sebagian usang, lihat 33]** `manual_arsip` punya 5 FK ke `users`, bukan 1: `archived_by`, `created_by`, `inactivated_by`, `proposed_destroy_by`, `destroyed_by` (`arsip/manual-arsip.ts:51-52, 56-58, 62-63, 65-66, 68-69`; `drizzle/0003:51-57`, `drizzle/0006:28-29`) | Tambah R-49 (`archived_by`), R-50 (`inactivated_by`), R-51 (`proposed_destroy_by`), R-52 (`destroyed_by`). Semua nullable, NA → `\|o--o{`. Total 52 |
 | 2 | R-43 kolom | **CEK nama kolom** | `created_by` uuid NOT NULL, FK → users, NO ACTION (`arsip/manual-arsip.ts:56-58`) | Kolom `created_by`; `\|\|--o{` tetap benar |
 | 3 | R-45 kolom; `manual_att.uploaded_by` | **CEK nama kolom**; `uploaded_by` | `created_by` uuid NOT NULL, FK → users, NO ACTION (`arsip/manual-arsip.ts:103-105`). Tidak ada kolom `uploaded_by` | Ganti `uploaded_by` → `created_by` |
-| 4 | Gambar 4.24 | R-37, R-38 tidak digambar | Keduanya FK fisik ke dokumen, **bukan** relasi pelaku (`arsip/berkas-arsip.ts:127-130`) | Tambah ke 4.24 agar sesuai K-6 (yang dikecualikan hanya relasi pelaku ke `users`) |
+| 4 | Gambar 4.42 | R-37, R-38 tidak digambar | Keduanya FK fisik ke dokumen, **bukan** relasi pelaku (`arsip/berkas-arsip.ts:127-130`) | Tambah ke 4.42 agar sesuai K-6 (yang dikecualikan hanya relasi pelaku ke `users`) |
 | 5 | `users.avatar_path` | `text avatar_path` "CEK" | Kolom avatar ada 4: `avatar_storage_key` text, `avatar_mime_type` text, `avatar_size_bytes` integer, `avatar_updated_at` timestamptz (`auth/users.ts:28-31`) | Ganti `avatar_path` → `avatar_storage_key`. Tambah `avatar_mime_type` dan `avatar_size_bytes` karena keduanya dikenai CHECK (temuan 6) |
 | 6 | Bagian 6, `users` | CHECK format username saja | Ada **3 CHECK**, semuanya hanya di SQL, tidak dideklarasikan di `auth/users.ts`: `auth_users_username_format_check` `^[a-z0-9._-]{3,30}$` dan minimal satu huruf (`drizzle/0017:51-52`); `auth_users_avatar_mime_type_check` ∈ {image/jpeg, image/png, image/webp} (`drizzle/0011:8-12`); `auth_users_avatar_size_bytes_check` 1–2.097.152 byte (`drizzle/0011:15-19`) | Tambah 2 CHECK avatar. Di kamus data, rujuk migrasi SQL untuk ketiganya |
 | 7 | `users.nip_nrp` UK | UK | UNIQUE penuh pada kolom nullable; NIP kosong dinormalkan ke NULL dan NULL boleh kembar (`auth/users.ts:44`; `drizzle/0017:58-63`) | Keterangan "unik bila diisi" |
 | 8 | `users.email` | "opsional, tidak unik" | Benar. Unique email dihapus (`drizzle/0017:66`) | — |
-| 9 | `sessions.expires_at` | "8 jam" | 8 jam, atau 30 hari bila `remember_me` (`src/lib/auth/session-constants.ts:9-10`; nilai dari aplikasi, bukan constraint) | Keterangan "8 jam; 30 hari bila remember_me" |
+| 9 | `sessions.expires_at` | "8 jam" | **[Usang, lihat 35]** 8 jam, atau 30 hari bila `remember_me` (`src/lib/auth/session-constants.ts:9-10`; nilai dari aplikasi, bukan constraint) | ~~Keterangan "8 jam; 30 hari bila remember_me"~~ → lihat 35 |
 | 10 | `berkas_arsip.klasifikasi_kode`, `klasifikasi_nama` | "snapshot; CEK nama kolom" | `klasifikasi_kode_snapshot` text **nullable**; `klasifikasi_nama_snapshot` text **NOT NULL** (`arsip/berkas-arsip.ts:36-37`) | Ganti nama kolom |
 | 11 | `berkas_arsip.status_arsip` | "AKTIF, USUL_MUSNAH, DIMUSNAHKAN" | CHECK: NULL atau ∈ {AKTIF, **INAKTIF**, USUL_MUSNAH, DIMUSNAHKAN} (`arsip/berkas-arsip.ts:64-67`; `drizzle/0008:12-13`) | Tambah INAKTIF |
 | 12 | `berkas_arsip` retensi | hanya `retensi_aktif`, `masa_aktif_berakhir` | Ada juga `retensi_inaktif` text dan `masa_inaktif_berakhir` date (`arsip/berkas-arsip.ts:41-44`) | Tambah keduanya, karena status INAKTIF ada |
 | 13 | `manual_arsip.tanggal` | `text tanggal` "CEK tipe" | `date` NOT NULL (`arsip/manual-arsip.ts:29`). Berbeda dengan `dokumen_transaksi.tanggal` yang memang `text` (`dokumen/dokumen-transaksi.ts:55`) | Ganti tipe → `date` |
 | 14 | `manual_arsip.nominal_realisasi` | "CHECK >= 0" | Nullable; CHECK `IS NULL OR >= 0` (`arsip/manual-arsip.ts:33, 84-87`) | Keterangan "nullable; CHECK NULL atau >= 0" |
-| 15 | `manual_arsip.status_arsip` | tanpa keterangan | NOT NULL, default AKTIF, CHECK ∈ {AKTIF, INAKTIF, USUL_MUSNAH, DIMUSNAHKAN} (`arsip/manual-arsip.ts:54, 80-83`) | Tambah keterangan |
-| 16 | `manual_arsip` kolom pengguna | hanya `created_by`; kolom siklus lama "catatan kaki, tidak digambar" | 4 kolom tambahan ber-FK fisik (temuan 1). `archived_by` masih diisi aplikasi (`src/lib/manual-arsip.ts:257`); tiga lainnya tidak diisi di `src/lib` | Gambar kelimanya di 4.28 (FK fisik harus tampil). Narasi: tiga kolom siklus lama tetap ada di basis data, tidak dipakai alur saat ini |
+| 15 | `manual_arsip.status_arsip` | tanpa keterangan | **[Usang, lihat 34]** NOT NULL, default AKTIF, CHECK ∈ {AKTIF, INAKTIF, USUL_MUSNAH, DIMUSNAHKAN} (`arsip/manual-arsip.ts:54, 80-83`) | Tambah keterangan |
+| 16 | `manual_arsip` kolom pengguna | hanya `created_by`; kolom siklus lama "catatan kaki, tidak digambar" | **[Sebagian usang, lihat 33]** 4 kolom tambahan ber-FK fisik (temuan 1). `archived_by` masih diisi aplikasi (`src/lib/manual-arsip.ts:257`; sejak 30 Sept `:313`); tiga lainnya tidak diisi di `src/lib` | Gambar kelimanya di 4.46 (FK fisik harus tampil). Narasi: tiga kolom siklus lama tetap ada di basis data, tidak dipakai alur saat ini |
 | 17 | `dokumen_transaksi.tahun` | `int` | `integer` NOT NULL (`dokumen/dokumen-transaksi.ts:54`) | Pakai nama tipe PostgreSQL `integer` (seragam dengan blok lain) |
 | 18 | `dokumen_transaksi.status` | "tanpa CHECK" | Benar, tanpa CHECK; default `DRAFT`; nilai kanonik DRAFT, IN_PPK_VALIDATION, IN_PPSPM_APPROVAL, NEED_REVISION, COMPLETED, TERSIMPAN (komentar `dokumen/dokumen-transaksi.ts:45-47`) | Keterangan diperjelas |
 | 19 | `dokumen_transaksi.is_non_material`, `nominal_realisasi` | tanpa keterangan nullability | `is_non_material` boolean **nullable** default false (baris 68); `nominal_realisasi` numeric(15,2) nullable default 0 (baris 67) | Keterangan ditambah |
@@ -66,6 +66,14 @@ Kamu memverifikasi rancangan ERD skripsi terhadap kode. **Otoritas tunggal: `src
 | 28 | `master_klasifikasi_arsip.created_at` | (tidak digambar) | `timestamp` **tanpa** zona waktu dan nullable (`arsip/klasifikasi-arsip.ts:21`), satu-satunya yang berbeda dari tabel lain | Catat di kamus data |
 | 29 | `log_aktivitas.aksi` | "SUBMIT, STORE, PPK_APPROVE, dst." | Tanpa CHECK (`dokumen/log-aktivitas.ts:24`); contoh nilai benar (`src/lib/dokumen/local-submit-repository.ts:82`, `src/routes/api/ppk/dokumen/$id/approve.ts:116`) | Tambah "tanpa CHECK" |
 | 30 | Bagian 3, peran | "CEK isi seed" | Seed 6 peran: PEGAWAI, PPK, PPSPM, KEPALA_SUB_BAGIAN_UMUM, PENANGGUNG_JAWAB_KINERJA, ADMIN (`src/db/seed/constants.ts:34-62`). Tidak ada KETUA_TIM | Terkonfirmasi |
+| 31 | Judul, status, ringkasan (30 Sept) | "diverifikasi 28 Sept … HEAD `19e1b2a`"; relasi 52 (49 FK + 3 logis) | Migrasi 0021 (`drizzle/0021_manual_arsip_drop_own_lifecycle.sql:18-34`, commit `ae8a698`, 29 Sept) | Diverifikasi ulang 30 Sept, HEAD `25d803a`, migrasi 0000–0021. Relasi **49** (46 FK fisik + 3 logis) |
+| 32 | 0A.1 baris Relasi | total 52 | idem | Total 49 (R-50 s.d. R-52 dihapus migrasi 0021) |
+| 33 | Temuan 1, 16; Bagian 4 R-50–R-52 | tiga FK siklus lama `manual_arsip → users` | Di-DROP (`0021:18-34`) | Baris R-50, R-51, R-52 dihapus; kodenya "tidak dipakai lagi" agar nomor lain tidak bergeser. Tersisa `created_by` (R-43) dan `archived_by` (R-49) |
+| 34 | Temuan 15; blok 4.46 | `manual_arsip.status_arsip` NOT NULL default AKTIF, CHECK 4 nilai | Kolom dan CHECK di-DROP (`0021:12, 28`); status efektif diturunkan (`src/lib/archive/manual-arsip-effective-status.ts:18-24`) | Kolom dihapus dari blok; narasi "atribut turunan" |
+| 35 | Temuan 9; blok 4.43 `sessions.expires_at` | "8 jam; 30 hari bila remember_me" | Sesi selalu 8 jam (`src/lib/auth/local-auth-service.ts:91-93`; `session-constants.ts:9`); `REMEMBER_ME_DURATION_SECONDS` dihapus di `8bbfdb6`; kolom `remember_me` tersisa, selalu `false` (`auth/sessions.ts:26`) | Keterangan "8 jam; `remember_me` sisa rancangan lama, selalu false" |
+| 36 | 0A.3 baris `manual_arsip` | memuat `inactivated_at`, `proposed_destroy_at`, `destroyed_at` | Di-DROP (`0021:29-33`) | Ketiganya dihapus dari daftar |
+| 37 | Rujukan baris `manual-arsip.ts` | nomor baris 28 Sept | Baris bergeser setelah 0021 | R-43 `:57-59`; R-44 `:82-84`; R-45 `:90-92`; entitas 20 `:78`; CHECK `manual_arsip` `:71-74`; `manual_arsip_attachment` `:99-100` |
+| 38 | `users.last_login_at` (baru, 30 Sept) | tanpa keterangan | Kolom hanya didefinisikan (`auth/users.ts:37`), **tidak pernah ditulis** aplikasi; pesan `catatWaktuLogin` dihapus dari sequence UC-01 | Keterangan "tersedia; tidak diisi aplikasi" |
 
 ### 0A.3 Yang dicek dan cocok (tanpa perubahan)
 
@@ -87,7 +95,7 @@ Kolom yang ada di kode tetapi sengaja tidak digambar (kolom audit rutin atau tid
 | `berkas_arsip` | `created_at`, `updated_at` |
 | `berkas_arsip_item` | `added_at` |
 | `berkas_arsip_activity` | `catatan`, `created_at` |
-| `manual_arsip` | `nomor_surat`, `tanggal_diarsipkan` (date), `klasifikasi_kode_snapshot`, `klasifikasi_nama_snapshot`, `retensi_aktif`, `retensi_inaktif`, `masa_aktif_berakhir`, `masa_inaktif_berakhir`, `metadata`, `inactivated_at`, `proposed_destroy_at`, `destroyed_at`, `created_at`, `updated_at` |
+| `manual_arsip` | `nomor_surat`, `tanggal_diarsipkan` (date), `klasifikasi_kode_snapshot`, `klasifikasi_nama_snapshot`, `retensi_aktif`, `retensi_inaktif`, `masa_aktif_berakhir`, `masa_inaktif_berakhir`, `metadata`, `created_at`, `updated_at` (`inactivated_at`, `proposed_destroy_at`, `destroyed_at` dihapus migrasi 0021) |
 | `manual_arsip_attachment` | `metadata`, `created_at` |
 | `audit_log` | `created_at` |
 | `app_settings` | `updated_at` |
@@ -146,8 +154,8 @@ Subbab ERD di "Buku Skripsi Daniel New.docx" saat ini:
 | K-3 | Kardinalitas minimum diturunkan dari **constraint basis data**, bukan aturan aplikasi. FK NOT NULL → `\|\|`; FK nullable → `\|o`. Sisi anak `o{`, atau `o\|` bila kolom FK unik. **Pengecualian tunggal:** R-47 (`audit_log.entity_id` NOT NULL tanpa FK) digambar `\|o`, karena tanpa FK basis data tidak menjamin dokumennya masih ada | Konsisten dengan otoritas kode. Aturan aplikasi (mis. "setiap pengguna minimal punya peran PEGAWAI", "berkas ditutup bila berisi ≥ 1 dokumen") ditulis di narasi, bukan di simbol |
 | K-4 | Nama entitas memakai identifier asli `skema.tabel` | Sesuai catatan penamaan kerangka: identifier kearsipan hanya di ERD dan kamus data |
 | K-5 | Label relasi = kata kerja bahasa Indonesia, dibaca dari entitas induk ke anak | Sesuai definisi relasi di Bab II |
-| K-6 | **4.24 (menyeluruh):** nama entitas saja, tanpa atribut; relasi "pelaku" ke `auth.users` (created_by, added_by, closed_by, actor_user_id, archived_by, dst.) **tidak digambar** kecuali `mengajukan` | 22 entitas + 52 relasi terlalu padat untuk satu halaman. Relasi pelaku digambar lengkap di ERD kelompok. Dinyatakan di keterangan Gambar 4.24 |
-| K-7 | **4.25–4.29 (per kelompok):** atribut kunci; entitas dari kelompok lain tampil sebagai **entitas rujukan** (abu-abu, hanya `id PK`) | Pembaca melihat asal FK tanpa mengulang atribut |
+| K-6 | **4.42 (menyeluruh):** nama entitas saja, tanpa atribut; relasi "pelaku" ke `auth.users` (created_by, added_by, closed_by, actor_user_id, archived_by, dst.) **tidak digambar** kecuali `mengajukan` | 22 entitas + 49 relasi terlalu padat untuk satu halaman. Relasi pelaku digambar lengkap di ERD kelompok. Dinyatakan di keterangan Gambar 4.42 |
+| K-7 | **4.43–4.47 (per kelompok):** atribut kunci; entitas dari kelompok lain tampil sebagai **entitas rujukan** (abu-abu, hanya `id PK`) | Pembaca melihat asal FK tanpa mengulang atribut |
 | K-8 | Kolom lengkap (tipe, panjang, default, constraint) ada di **kamus data**, bukan di gambar | Sesuai kerangka (kamus data 5 entitas inti di badan bab, sisanya lampiran) |
 | K-9 | Tidak digambar: `drizzle.__drizzle_migrations`, `master_jenis_dokumen` (dihapus migrasi 0019) | Sesuai kerangka |
 | K-10 | Tipe atribut ditulis dengan nama tipe PostgreSQL: `uuid`, `text`, `integer`, `bigint`, `boolean`, `numeric`, `date`, `timestamptz`, `jsonb`. Presisi (mis. `numeric(15,2)`) ditulis di keterangan karena Mermaid tidak menerima koma di nama tipe | Seragam di semua gambar; cocok dengan kamus data |
@@ -158,38 +166,38 @@ Subbab ERD di "Buku Skripsi Daniel New.docx" saat ini:
 
 | No | Skema | Tabel | Nama di narasi | ERD kelompok | Bukti |
 |---|---|---|---|---|---|
-| 1 | auth | `users` | Pengguna | 4.25 | `auth/users.ts:16` |
-| 2 | auth | `roles` | Peran | 4.25 | `auth/roles.ts:11` |
-| 3 | auth | `user_roles` | Peran pengguna (asosiatif) | 4.25 | `auth/user-roles.ts:7` |
-| 4 | auth | `sessions` | Sesi | 4.25 | `auth/sessions.ts:14` |
-| 5 | master | `master_fungsi` | Fungsi | 4.26 | `master/fungsi.ts:13` |
-| 6 | master | `master_kegiatan` | Kegiatan | 4.26 | `master/kegiatan.ts:15` |
-| 7 | master | `master_komponen` | Komponen | 4.26 | `master/komponen.ts:15` |
-| 8 | master | `master_jenis_permintaan` | Jenis Permintaan | 4.26 | `master/jenis-permintaan.ts:14` |
-| 9 | master | `master_kategori_permintaan` | Kategori Permintaan | 4.26 | `master/kategori-permintaan.ts:15` |
-| 10 | master | `master_detail_permintaan` | Detail Permintaan | 4.26 | `master/detail-permintaan.ts:15` |
-| 11 | master | `master_kelengkapan_dokumen` | Kelengkapan Dokumen | 4.26 | `master/kelengkapan-dokumen.ts:19` |
-| 12 | master | `ketua_tim_assignments` | Penugasan Ketua Tim | 4.26 | `master/ketua-tim-assignments.ts:13` |
-| 13 | dokumen | `dokumen_transaksi` | Dokumen | 4.27 | `dokumen/dokumen-transaksi.ts:33` |
-| 14 | dokumen | `log_aktivitas` | Riwayat aktivitas dokumen | 4.27 | `dokumen/log-aktivitas.ts:14` |
-| 15 | arsip | `master_klasifikasi_arsip` | Klasifikasi (Cara Pembayaran) | 4.28 | `arsip/klasifikasi-arsip.ts:14` |
-| 16 | arsip | `berkas_arsip` | Berkas | 4.28 | `arsip/berkas-arsip.ts:28` |
-| 17 | arsip | `berkas_arsip_item` | Isi berkas | 4.28 | `arsip/berkas-arsip.ts:80` |
-| 18 | arsip | `berkas_arsip_activity` | Riwayat berkas | 4.28 | `arsip/berkas-arsip.ts:116` |
-| 19 | arsip | `manual_arsip` | Dokumen tambahan KSBU | 4.28 | `arsip/manual-arsip.ts:24` |
-| 20 | arsip | `manual_arsip_attachment` | Lampiran dokumen tambahan | 4.28 | `arsip/manual-arsip.ts:91` |
-| 21 | audit | `audit_log` | Log audit | 4.29 | `audit/audit-log.ts:35` |
-| 22 | app | `app_settings` | Pengaturan aplikasi | 4.29 | `app/app-settings.ts:5` |
+| 1 | auth | `users` | Pengguna | 4.43 | `auth/users.ts:16` |
+| 2 | auth | `roles` | Peran | 4.43 | `auth/roles.ts:11` |
+| 3 | auth | `user_roles` | Peran pengguna (asosiatif) | 4.43 | `auth/user-roles.ts:7` |
+| 4 | auth | `sessions` | Sesi | 4.43 | `auth/sessions.ts:14` |
+| 5 | master | `master_fungsi` | Fungsi | 4.44 | `master/fungsi.ts:13` |
+| 6 | master | `master_kegiatan` | Kegiatan | 4.44 | `master/kegiatan.ts:15` |
+| 7 | master | `master_komponen` | Komponen | 4.44 | `master/komponen.ts:15` |
+| 8 | master | `master_jenis_permintaan` | Jenis Permintaan | 4.44 | `master/jenis-permintaan.ts:14` |
+| 9 | master | `master_kategori_permintaan` | Kategori Permintaan | 4.44 | `master/kategori-permintaan.ts:15` |
+| 10 | master | `master_detail_permintaan` | Detail Permintaan | 4.44 | `master/detail-permintaan.ts:15` |
+| 11 | master | `master_kelengkapan_dokumen` | Kelengkapan Dokumen | 4.44 | `master/kelengkapan-dokumen.ts:19` |
+| 12 | master | `ketua_tim_assignments` | Penugasan Ketua Tim | 4.44 | `master/ketua-tim-assignments.ts:13` |
+| 13 | dokumen | `dokumen_transaksi` | Dokumen | 4.45 | `dokumen/dokumen-transaksi.ts:33` |
+| 14 | dokumen | `log_aktivitas` | Riwayat aktivitas dokumen | 4.45 | `dokumen/log-aktivitas.ts:14` |
+| 15 | arsip | `master_klasifikasi_arsip` | Klasifikasi (Cara Pembayaran) | 4.46 | `arsip/klasifikasi-arsip.ts:14` |
+| 16 | arsip | `berkas_arsip` | Berkas | 4.46 | `arsip/berkas-arsip.ts:28` |
+| 17 | arsip | `berkas_arsip_item` | Isi berkas | 4.46 | `arsip/berkas-arsip.ts:80` |
+| 18 | arsip | `berkas_arsip_activity` | Riwayat berkas | 4.46 | `arsip/berkas-arsip.ts:116` |
+| 19 | arsip | `manual_arsip` | Dokumen tambahan KSBU | 4.46 | `arsip/manual-arsip.ts:24` |
+| 20 | arsip | `manual_arsip_attachment` | Lampiran dokumen tambahan | 4.46 | `arsip/manual-arsip.ts:78` |
+| 21 | audit | `audit_log` | Log audit | 4.47 | `audit/audit-log.ts:35` |
+| 22 | app | `app_settings` | Pengaturan aplikasi | 4.47 | `app/app-settings.ts:5` |
 
 Peran di `auth.roles` ada enam (PEGAWAI, PPK, PPSPM, KEPALA_SUB_BAGIAN_UMUM, PENANGGUNG_JAWAB_KINERJA, ADMIN; `src/db/seed/constants.ts:34-62`). Ketua Tim **bukan** baris di `roles`, melainkan baris di `ketua_tim_assignments` (satu per kegiatan).
 
 ---
 
-## 4. Daftar relasi (R-01 s.d. R-52) — terverifikasi
+## 4. Daftar relasi (R-01 s.d. R-49; R-50 s.d. R-52 tidak dipakai lagi) — terverifikasi
 
 Singkatan ON DELETE: C = cascade, R = restrict, SN = set null, NA = no action, — = tidak ada FK. Kolom "Kardinalitas" = penanda Mermaid (induk → anak). Kolom "Bukti" = lokasi definisi FK di `src/db/schema/`. **Tebal** = diubah dari draf 27 Sept.
 
-### 4.1 Autentikasi (4.25)
+### 4.1 Autentikasi (4.43)
 
 | Kode | Induk | Anak | Kolom | Kardinalitas | ON DELETE | Jenis | Label | Bukti |
 |---|---|---|---|---|---|---|---|---|
@@ -198,7 +206,7 @@ Singkatan ON DELETE: C = cascade, R = restrict, SN = set null, NA = no action, �
 | R-03 | users | sessions | `user_id` NOT NULL | `\|\|--o{` | C | FK | membuka | `auth/sessions.ts:18-20` |
 | R-04 | users | users | `deactivated_by` nullable | `\|o..o{` | — | logis | menonaktifkan | `auth/users.ts:36` (tanpa `.references()`) |
 
-### 4.2 Data master (4.26)
+### 4.2 Data master (4.44)
 
 | Kode | Induk | Anak | Kolom | Kardinalitas | ON DELETE | Jenis | Label | Bukti |
 |---|---|---|---|---|---|---|---|---|
@@ -215,7 +223,7 @@ Singkatan ON DELETE: C = cascade, R = restrict, SN = set null, NA = no action, �
 | R-15 | users | ketua_tim_assignments | `user_id` NOT NULL | `\|\|--o{` | C | FK | ditugaskan sebagai ketua | `master/ketua-tim-assignments.ts:17-19` |
 | R-16 | users | ketua_tim_assignments | `created_by` nullable | `\|o--o{` | SN | FK | menugaskan | `master/ketua-tim-assignments.ts:24-25` |
 
-### 4.3 Transaksi dokumen (4.27)
+### 4.3 Transaksi dokumen (4.45)
 
 | Kode | Induk | Anak | Kolom | Kardinalitas | ON DELETE | Jenis | Label | Bukti |
 |---|---|---|---|---|---|---|---|---|
@@ -230,7 +238,7 @@ Singkatan ON DELETE: C = cascade, R = restrict, SN = set null, NA = no action, �
 | R-25 | dokumen_transaksi | log_aktivitas | `dokumen_id` NOT NULL | `\|\|--o{` | C | FK | mencatat riwayat | `dokumen/log-aktivitas.ts:18-20` |
 | R-26 | users | log_aktivitas | `user_id` NOT NULL | `\|\|--o{` | NA | FK | melakukan | `dokumen/log-aktivitas.ts:21-23` |
 
-### 4.4 Pemberkasan (4.28)
+### 4.4 Pemberkasan (4.46)
 
 | Kode | Induk | Anak | Kolom | Kardinalitas | ON DELETE | Jenis | Label | Bukti |
 |---|---|---|---|---|---|---|---|---|
@@ -250,17 +258,14 @@ Singkatan ON DELETE: C = cascade, R = restrict, SN = set null, NA = no action, �
 | R-40 | master_kegiatan | manual_arsip | `kegiatan_id` NOT NULL | `\|\|--o{` | R | FK | mengelompokkan | `arsip/manual-arsip.ts:37-39` |
 | R-41 | master_komponen | manual_arsip | `komponen_id` NOT NULL | `\|\|--o{` | R | FK | membebani | `arsip/manual-arsip.ts:40-42` |
 | R-42 | master_klasifikasi_arsip | manual_arsip | `klasifikasi_id` nullable | `\|o--o{` | SN | FK | mengklasifikasikan | `arsip/manual-arsip.ts:43-44` |
-| R-43 | users | manual_arsip | **`created_by`** NOT NULL | `\|\|--o{` | NA | FK | mencatat | `arsip/manual-arsip.ts:56-58` |
-| R-44 | manual_arsip | manual_arsip_attachment | `manual_arsip_id` NOT NULL | `\|\|--o{` | NA | FK | melampirkan | `arsip/manual-arsip.ts:95-97` |
-| R-45 | users | manual_arsip_attachment | **`created_by`** NOT NULL | `\|\|--o{` | NA | FK | mengunggah | `arsip/manual-arsip.ts:103-105` |
+| R-43 | users | manual_arsip | **`created_by`** NOT NULL | `\|\|--o{` | NA | FK | mencatat | `arsip/manual-arsip.ts:57-59` |
+| R-44 | manual_arsip | manual_arsip_attachment | `manual_arsip_id` NOT NULL | `\|\|--o{` | NA | FK | melampirkan | `arsip/manual-arsip.ts:82-84` |
+| R-45 | users | manual_arsip_attachment | **`created_by`** NOT NULL | `\|\|--o{` | NA | FK | mengunggah | `arsip/manual-arsip.ts:90-92` |
 | **R-49** | users | manual_arsip | **`archived_by`** nullable | `\|o--o{` | NA | FK | **mengarsipkan** | `arsip/manual-arsip.ts:51-52`; `drizzle/0006:28-29` |
-| **R-50** | users | manual_arsip | **`inactivated_by`** nullable | `\|o--o{` | NA | FK (siklus lama) | **menginaktifkan** | `arsip/manual-arsip.ts:62-63`; `drizzle/0003:53` |
-| **R-51** | users | manual_arsip | **`proposed_destroy_by`** nullable | `\|o--o{` | NA | FK (siklus lama) | **mengusulkan musnah** | `arsip/manual-arsip.ts:65-66`; `drizzle/0003:55` |
-| **R-52** | users | manual_arsip | **`destroyed_by`** nullable | `\|o--o{` | NA | FK (siklus lama) | **memusnahkan** | `arsip/manual-arsip.ts:68-69`; `drizzle/0003:57` |
 
-R-49 s.d. R-52 diletakkan di tabel ini karena termasuk kelompok pemberkasan; nomor ditambahkan di belakang agar kode R-01 s.d. R-48 yang sudah dirujuk dokumen lain tidak bergeser. "Siklus lama" = kolom siklus retensi per dokumen dari rancangan sebelum berkas; FK-nya masih ada di basis data, tetapi tidak diisi alur aplikasi saat ini (`archived_by` masih diisi, `src/lib/manual-arsip.ts:257`).
+R-49 diletakkan di tabel ini karena termasuk kelompok pemberkasan; nomor ditambahkan di belakang agar kode R-01 s.d. R-48 yang sudah dirujuk dokumen lain tidak bergeser. Kode R-50 s.d. R-52 (`inactivated_by`, `proposed_destroy_by`, `destroyed_by`) tidak dipakai lagi: kolom dan FK-nya dihapus migrasi 0021 (`drizzle/0021_manual_arsip_drop_own_lifecycle.sql:18-34`). `archived_by` masih diisi aplikasi (`src/lib/manual-arsip.ts:313`).
 
-### 4.5 Audit dan pengaturan (4.29)
+### 4.5 Audit dan pengaturan (4.47)
 
 | Kode | Induk | Anak | Kolom | Kardinalitas | ON DELETE | Jenis | Label | Bukti |
 |---|---|---|---|---|---|---|---|---|
@@ -268,19 +273,19 @@ R-49 s.d. R-52 diletakkan di tabel ini karena termasuk kelompok pemberkasan; nom
 | R-47 | dokumen_transaksi | audit_log | `entity_id` NOT NULL | `\|o..o{` | — | logis, disengaja | dicatat | `audit/audit-log.ts:31-34, 40` (lihat K-3, pengecualian) |
 | R-48 | users | app_settings | `updated_by` nullable | `\|o..o{` | — | logis | memperbarui | `app/app-settings.ts:9`; `drizzle/0015:13` |
 
-**Rekap:** 52 relasi = **49 FK fisik** (auth 3, master 12, dokumen 10, arsip 23, audit 1) + **3 relasi logis** (R-04, R-47, R-48). Relasi logis tetap tepat tiga, sesuai kerangka Rev 9.1. Relasi dengan induk `users` ada 20; 17 di antaranya relasi pelaku (semua kecuali R-01, R-03, R-15).
+**Rekap:** 49 relasi = **46 FK fisik** (auth 3, master 12, dokumen 10, arsip 20, audit 1) + **3 relasi logis** (R-04, R-47, R-48). Relasi logis tetap tepat tiga, sesuai kerangka Rev 9.1. Relasi dengan induk `users` ada 17; 14 di antaranya relasi pelaku (semua kecuali R-01, R-03, R-15).
 
 ---
 
 ## 5. Kode Mermaid per gambar (sudah dikoreksi)
 
-### Gambar 4.24 — ERD Menyeluruh
+### Gambar 4.42 — ERD Menyeluruh
 
 **Yang harus terlihat:** Seluruh 22 entitas dan relasi antarkelompok, tanpa atribut. Relasi pelaku ke `auth.users` hanya `mengajukan` (K-6). `app.app_settings` tampil tanpa garis karena satu-satunya relasinya logis ke `users` (boleh ditambah bila Daniel memilih O-3 = lengkap).
 
 **Perubahan dari draf:** ditambah R-37 dan R-38 (`dirujuk`), karena keduanya bukan relasi pelaku.
 
-**Keterangan gambar yang disarankan:** "Relasi pelaku (pengguna yang membuat, menutup, menambahkan, atau mencatat) tidak ditampilkan kecuali relasi *mengajukan*; relasi pelaku lengkap ada pada Gambar 4.25–4.29. Garis putus-putus menyatakan relasi logis tanpa kunci tamu."
+**Keterangan gambar yang disarankan:** "Relasi pelaku (pengguna yang membuat, menutup, menambahkan, atau mencatat) tidak ditampilkan kecuali relasi *mengajukan*; relasi pelaku lengkap ada pada Gambar 4.43–4.47. Garis putus-putus menyatakan relasi logis tanpa kunci tamu."
 
 **Catatan tata letak:** tata letak otomatis Mermaid untuk 22 entitas melebar ke samping (±2.400 px × 480 px) dan banyak garis bersilang. Untuk buku, gambar ini sebaiknya diatur manual (Bagian 8).
 
@@ -351,11 +356,11 @@ erDiagram
   dokumen |o..o{ audit_log : "dicatat (logis)"
 ```
 
-### Gambar 4.25 — ERD Autentikasi dan Otorisasi
+### Gambar 4.43 — ERD Autentikasi dan Otorisasi
 
 **Yang harus terlihat:** `user_roles` sebagai entitas asosiatif M:M `users`–`roles` (PK komposit); `sessions` menyimpan *hash* token; relasi logis `deactivated_by` (garis putus-putus, rekursif).
 
-**Perubahan dari draf:** `avatar_path` → `avatar_storage_key`; tambah `avatar_mime_type`, `avatar_size_bytes` (ber-CHECK); keterangan `nip_nrp` dan `expires_at`.
+**Perubahan dari draf:** `avatar_path` → `avatar_storage_key`; tambah `avatar_mime_type`, `avatar_size_bytes` (ber-CHECK); keterangan `nip_nrp` dan `expires_at`. **Update 30 Sept:** `expires_at` selalu 8 jam (opsi "ingat saya" dihapus; `remember_me` tersisa dan selalu false); `last_login_at` tidak pernah diisi aplikasi.
 
 ```mermaid
 erDiagram
@@ -376,7 +381,7 @@ erDiagram
     boolean is_active
     timestamptz deactivated_at
     uuid deactivated_by "relasi logis, tanpa FK"
-    timestamptz last_login_at
+    timestamptz last_login_at "tidak diisi aplikasi"
   }
   roles["auth.roles"] {
     uuid id PK
@@ -390,9 +395,9 @@ erDiagram
     uuid id PK
     uuid user_id FK
     text token_hash UK "SHA-256 dari token"
-    timestamptz expires_at "8 jam; 30 hari bila remember_me"
+    timestamptz expires_at "8 jam"
     timestamptz revoked_at
-    boolean remember_me
+    boolean remember_me "sisa rancangan lama; selalu false"
     text user_agent
     text ip_address
   }
@@ -402,7 +407,7 @@ erDiagram
   users |o..o{ users : "menonaktifkan (logis)"
 ```
 
-### Gambar 4.26 — ERD Data Master
+### Gambar 4.44 — ERD Data Master
 
 **Yang harus terlihat:** Dua cabang independen: Fungsi → Kegiatan → Komponen dan Jenis → Kategori → Detail, yang bertemu hanya di `master_kelengkapan_dokumen`. Penugasan Ketua Tim unik per kegiatan (`||--o|`).
 
@@ -482,7 +487,7 @@ erDiagram
   class users ref
 ```
 
-### Gambar 4.27 — ERD Transaksi Dokumen
+### Gambar 4.45 — ERD Transaksi Dokumen
 
 **Yang harus terlihat:** Rantai dokumen ber-FK penuh (termasuk jenis/kategori/detail sejak migrasi 0020); `komponen_id` opsional untuk non-material; lampiran sebagai `jsonb`, bukan tabel; `log_aktivitas` ikut terhapus (*cascade*) bila dokumen dihapus.
 
@@ -563,15 +568,15 @@ erDiagram
   class users,m_fungsi,m_kegiatan,m_komponen,m_jenis,m_kategori,m_detail ref
 ```
 
-### Gambar 4.28 — ERD Pemberkasan
+### Gambar 4.46 — ERD Pemberkasan
 
 **Yang harus terlihat:** Klasifikasi hierarkis (rekursif); satu berkas per (klasifikasi, TA); isi berkas bersumber dari dokumen alur kerja **atau** dokumen tambahan KSBU (`o|` = satu dokumen paling banyak di satu berkas); riwayat berkas.
 
-Narasi: CHECK "tepat satu referensi" pada `berkas_arsip_item`; 4 CHECK state berkas (+1 CHECK rentang TA); `manual_arsip` punya lima relasi pelaku ke `users`, tiga di antaranya (`inactivated_by`, `proposed_destroy_by`, `destroyed_by`) adalah kolom siklus lama yang FK-nya masih ada tetapi tidak diisi alur saat ini.
+Narasi: CHECK "tepat satu referensi" pada `berkas_arsip_item`; 4 CHECK state berkas (+1 CHECK rentang TA); `manual_arsip` punya dua relasi pelaku ke `users` (`created_by`, `archived_by`). Status arsip dokumen tambahan KSBU tidak disimpan di `manual_arsip`; nilainya diturunkan dari `berkas_arsip.status_arsip` lewat `berkas_arsip_item` dan bernilai AKTIF selama berkas masih terbuka (migrasi 0021).
 
-**Perubahan dari draf:** nama kolom *snapshot* klasifikasi; INAKTIF di `status_arsip`; tambah `retensi_inaktif`, `masa_inaktif_berakhir`; `manual_arsip.tanggal` → `date`; tambah 4 kolom pelaku `manual_arsip` + relasi R-49 s.d. R-52; `uploaded_by` → `created_by`.
+**Perubahan dari draf:** nama kolom *snapshot* klasifikasi; INAKTIF di `berkas_arsip.status_arsip`; tambah `retensi_inaktif`, `masa_inaktif_berakhir`; `manual_arsip.tanggal` → `date`; tambah `archived_by` (R-49); `uploaded_by` → `created_by`. **Update 30 Sept:** kolom `status_arsip` dan tiga kolom pelaku siklus lama (R-50 s.d. R-52) dihapus migrasi 0021.
 
-**Catatan tata letak:** `users` kini punya 9 garis ke entitas di gambar ini. Bila hasil render terlalu padat, letakkan `users` di tepi (atas atau bawah) dan `manual` di dekatnya.
+**Catatan tata letak:** `users` punya 7 garis ke entitas di gambar ini. Bila hasil render terlalu padat, letakkan `users` di tepi (atas atau bawah) dan `manual` di dekatnya.
 
 ```mermaid
 erDiagram
@@ -627,12 +632,8 @@ erDiagram
     uuid kegiatan_id FK
     uuid komponen_id FK
     uuid klasifikasi_id FK "nullable"
-    text status_arsip "default AKTIF; CHECK 4 nilai"
     uuid created_by FK
     uuid archived_by FK "nullable"
-    uuid inactivated_by FK "nullable; siklus lama"
-    uuid proposed_destroy_by FK "nullable; siklus lama"
-    uuid destroyed_by FK "nullable; siklus lama"
   }
   manual_att["arsip.manual_arsip_attachment"] {
     uuid id PK
@@ -678,15 +679,12 @@ erDiagram
   users |o--o{ berkas_act : "melakukan"
   users ||--o{ manual : "mencatat"
   users |o--o{ manual : "mengarsipkan"
-  users |o--o{ manual : "menginaktifkan"
-  users |o--o{ manual : "mengusulkan musnah"
-  users |o--o{ manual : "memusnahkan"
   users ||--o{ manual_att : "mengunggah"
   classDef ref fill:#eeeeee,stroke:#999999
   class dokumen,users,m_fungsi,m_kegiatan,m_komponen ref
 ```
 
-### Gambar 4.29 — ERD Audit dan Pengaturan
+### Gambar 4.47 — ERD Audit dan Pengaturan
 
 **Yang harus terlihat:** `audit_log.entity_id` sengaja tanpa FK (garis putus-putus) agar jejak tetap ada setelah dokumen dihapus; `app_settings` berbentuk *key–value* `jsonb`.
 
@@ -741,8 +739,8 @@ erDiagram
 | `berkas_arsip` | UNIQUE (`klasifikasi_id`, `tahun_anggaran`) (`berkas_arsip_klasifikasi_tahun_unique`); CHECK TA 2000–2100; CHECK `status_berkas` ∈ {OPEN, CLOSED}; CHECK `status_arsip` NULL atau ∈ {AKTIF, **INAKTIF**, USUL_MUSNAH, DIMUSNAHKAN}; CHECK OPEN ⇒ `status_arsip` NULL; CHECK OPEN ⇔ `closed_at`/`closed_by` NULL (CLOSED ⇔ keduanya terisi) | Satu berkas per Cara Pembayaran per TA; state berkas konsisten | `arsip/berkas-arsip.ts:60-76`; `drizzle/0018:21-28` |
 | `berkas_arsip_item` | UNIQUE `dokumen_id` WHERE NOT NULL; UNIQUE `manual_arsip_id` WHERE NOT NULL; CHECK `source_type` ∈ {WORKFLOW, MANUAL}; CHECK tepat satu referensi sesuai `source_type` | Satu dokumen hanya di satu berkas | `arsip/berkas-arsip.ts:101-112` |
 | `berkas_arsip_activity` | CHECK `event_type` ∈ {BERKAS_DIBUKA, DOKUMEN_PERSETUJUAN_DIKLASIFIKASIKAN, DOKUMEN_MANUAL_DITAMBAHKAN, BERKAS_DITUTUP, METADATA_ARSIP_AKTIF_DIPERBARUI, BERKAS_DIPINDAHKAN_KE_INAKTIF, BERKAS_DIPINDAHKAN_KE_USUL_MUSNAH, BERKAS_DIMUSNAHKAN}; CHECK `source_type` NULL atau ∈ {WORKFLOW, MANUAL}; CHECK referensi sesuai `source_type` (keduanya NULL bila `source_type` NULL) | Riwayat berkas hanya berisi peristiwa yang dikenal | `arsip/berkas-arsip.ts:141-163` |
-| `manual_arsip` | CHECK `status_arsip` ∈ {AKTIF, INAKTIF, USUL_MUSNAH, DIMUSNAHKAN} (`manual_arsip_status_arsip_check`); CHECK `nominal_realisasi` NULL atau ≥ 0 (`manual_arsip_nominal_realisasi_positive`) | — | `arsip/manual-arsip.ts:80-87` |
-| `manual_arsip_attachment` | CHECK `size_bytes` ≥ 0 (`manual_arsip_attachment_size_bytes_nonnegative`); CHECK `length(trim(judul_lampiran)) > 0` (`manual_arsip_attachment_judul_lampiran_nonempty`) | — | `arsip/manual-arsip.ts:112-113` |
+| `manual_arsip` | CHECK `nominal_realisasi` NULL atau ≥ 0 (`manual_arsip_nominal_realisasi_positive`). Tidak ada CHECK status arsip: kolom `status_arsip` dihapus migrasi 0021; status arsip efektif diturunkan dari berkas penaung | — | `arsip/manual-arsip.ts:71-74`; `drizzle/0021:12, 28`; `src/lib/archive/manual-arsip-effective-status.ts:18-24` |
+| `manual_arsip_attachment` | CHECK `size_bytes` ≥ 0 (`manual_arsip_attachment_size_bytes_nonnegative`); CHECK `length(trim(judul_lampiran)) > 0` (`manual_arsip_attachment_judul_lampiran_nonempty`) | — | `arsip/manual-arsip.ts:99-100` |
 | `audit_log` | CHECK `entity_type` ∈ {DOKUMEN}; CHECK `aksi` ∈ {DOKUMEN_LAMPIRAN_DIBERSIHKAN, DOKUMEN_DIHAPUS_PERMANEN, BERKAS_LAMPIRAN_DIBERSIHKAN} | — | `audit/audit-log.ts:51-59` |
 
 ---
@@ -752,13 +750,13 @@ erDiagram
 | No | Pertanyaan | Jawaban | Bukti |
 |---|---|---|---|
 | V-01 | Nullability kolom FK | Semua sesuai simbol di Bagian 4. `dokumen_transaksi.fungsi_id`, `kegiatan_jenis_id`, `created_by`; `log_aktivitas.user_id`; `berkas_arsip.created_by`; `berkas_arsip_item.added_by` NOT NULL. `berkas_arsip_activity.actor_user_id` nullable | Bagian 4, kolom Bukti |
-| V-02 | ON DELETE `berkas_arsip_item.berkas_id`, `manual_arsip_attachment.manual_arsip_id`, `berkas_arsip_activity.berkas_id` | Ketiganya NO ACTION | `arsip/berkas-arsip.ts:86, 122`; `arsip/manual-arsip.ts:97` |
-| V-03 | Kolom pengguna di `manual_arsip` dan `manual_arsip_attachment` | `manual_arsip`: 5 FK (`created_by`, `archived_by`, `inactivated_by`, `proposed_destroy_by`, `destroyed_by`). `manual_arsip_attachment`: 1 FK (`created_by`) | Temuan 1–3 |
+| V-02 | ON DELETE `berkas_arsip_item.berkas_id`, `manual_arsip_attachment.manual_arsip_id`, `berkas_arsip_activity.berkas_id` | Ketiganya NO ACTION | `arsip/berkas-arsip.ts:86, 122`; `arsip/manual-arsip.ts:84` |
+| V-03 | Kolom pengguna di `manual_arsip` dan `manual_arsip_attachment` | `manual_arsip`: 2 FK (`created_by`, `archived_by`); tiga FK siklus lama dihapus migrasi 0021. `manual_arsip_attachment`: 1 FK (`created_by`) | Temuan 1–3, 33 |
 | V-04 | Kolom avatar; kolom *snapshot* klasifikasi | `avatar_storage_key` (+3 kolom avatar); `klasifikasi_kode_snapshot`, `klasifikasi_nama_snapshot` | Temuan 5, 10 |
-| V-05 | Tipe `tahun`, `tanggal`, `tahun_anggaran`, `retensi_aktif`, `masa_aktif_berakhir`, `size_bytes` | `dokumen.tahun` integer; `dokumen.tanggal` text; `manual.tanggal` date; `tahun_anggaran` integer; `retensi_aktif` text; `masa_aktif_berakhir` date; `size_bytes` bigint | `dokumen/dokumen-transaksi.ts:54-55`; `arsip/manual-arsip.ts:29, 102`; `arsip/berkas-arsip.ts:35, 41, 43` |
+| V-05 | Tipe `tahun`, `tanggal`, `tahun_anggaran`, `retensi_aktif`, `masa_aktif_berakhir`, `size_bytes` | `dokumen.tahun` integer; `dokumen.tanggal` text; `manual.tanggal` date; `tahun_anggaran` integer; `retensi_aktif` text; `masa_aktif_berakhir` date; `size_bytes` bigint | `dokumen/dokumen-transaksi.ts:54-55`; `arsip/manual-arsip.ts:29, 89`; `arsip/berkas-arsip.ts:35, 41, 43` |
 | V-06 | `dokumen_transaksi.created_at`; `master_kelengkapan_dokumen.is_active` | Ada `created_at`; **tidak ada** `is_active` | Temuan 20–21 |
 | V-07 | FK fisik `berkas_arsip_activity` → dokumen & manual | Ada, NO ACTION | `arsip/berkas-arsip.ts:127-130`; `drizzle/0010:71-89` |
-| V-08 | FK lain yang tidak tercantum | 4 FK `manual_arsip` → `users` (R-49 s.d. R-52). Tidak ada FK lain | Temuan 1 |
+| V-08 | FK lain yang tidak tercantum | Tidak ada FK lain. `manual_arsip → users` tinggal R-43 dan R-49 | Temuan 1, 33 |
 | V-09 | `app_settings.updated_by`, `users.deactivated_by` tanpa FK | Terkonfirmasi tanpa FK | `app/app-settings.ts:9`; `auth/users.ts:36` |
 | V-10 | Seed `auth.roles` | 6 peran | `src/db/seed/constants.ts:34-62` |
 
@@ -770,22 +768,22 @@ erDiagram
 |---|---|---|---|
 | O-1 | **Alat gambar** | (a) Mermaid → PNG langsung (mmdc/Mermaid Live), (b) Mermaid sebagai widget di Miro (seperti *sequence diagram*), (c) *shape* ERD asli Miro digambar manual dari kode Mermaid yang sudah terverifikasi | Lihat tabel di bawah. Verifikasi sudah selesai; keputusan tinggal alat |
 | O-2 | Arti garis putus-putus | (a) Relasi logis tanpa FK (kerangka sekarang), (b) *non-identifying* sesuai semantik Mermaid | (a), dengan keterangan di bawah gambar. Semantik *identifying* tidak dibahas di Bab II, jadi (a) lebih mudah dijelaskan |
-| O-3 | Isi Gambar 4.24 | (a) Tanpa relasi pelaku ke `users` (K-6), (b) semua 52 relasi | (a); relasi pelaku sudah lengkap di 4.25–4.29 |
+| O-3 | Isi Gambar 4.42 | (a) Tanpa relasi pelaku ke `users` (K-6), (b) semua 49 relasi | (a); relasi pelaku sudah lengkap di 4.43–4.47 |
 | O-4 | Revisi Bab II subbab ERD (Bagian 1.3) | Dikerjakan sekarang / setelah gambar final | Sekarang, supaya notasi teori dan gambar sama sebelum narasi 4.2.3 ditulis |
-| O-5 | **Baru.** Tiga relasi siklus lama `manual_arsip` (R-50 s.d. R-52) | (a) Digambar penuh di 4.28 (versi di dokumen ini), (b) tidak digambar, disebut di catatan kaki | (a). FK-nya masih ada di basis data; ERD yang menghilangkan FK fisik tidak lagi cocok dengan skema. Kolomnya bisa dijelaskan di narasi sebagai sisa rancangan sebelumnya |
+| O-5 | **Selesai (gugur).** Relasi siklus lama `manual_arsip` (R-50 s.d. R-52) | — | Kolom dan FK dihapus migrasi 0021 (29 Sept). Tidak digambar; narasi cukup menyebut status arsip dokumen tambahan KSBU sebagai atribut turunan dari berkas |
 
 ### Perbandingan alat (bahan O-1)
 
 | Aspek | Mermaid → PNG | Widget Mermaid di Miro | *Shape* ERD Miro manual |
 |---|---|---|---|
-| Kecepatan | Paling cepat; kode di dokumen ini langsung jadi | Cepat (alur sama dengan *sequence diagram*) | Lambat: 22 entitas, 52 relasi |
+| Kecepatan | Paling cepat; kode di dokumen ini langsung jadi | Cepat (alur sama dengan *sequence diagram*) | Lambat: 22 entitas, 49 relasi |
 | Kebenaran notasi | Crow's Foot benar; PK/FK/UK tampil | Sama dengan Mermaid | Crow's Foot benar |
-| Tata letak | Otomatis. Baik untuk 4.25–4.29; **4.24 berantakan** (lihat catatan) | Otomatis, sama; widget tidak bisa diatur per kotak | Bebas diatur; paling rapi untuk 4.24 |
+| Tata letak | Otomatis. Baik untuk 4.43–4.47; **4.42 berantakan** (lihat catatan) | Otomatis, sama; widget tidak bisa diatur per kotak | Bebas diatur; paling rapi untuk 4.42 |
 | Warna entitas rujukan | Bisa (`classDef`) | Tergantung dukungan widget | Bisa |
 | Konsistensi dengan gambar lain | Berbeda gaya dari *activity diagram* Miro | Sama dengan *sequence diagram* | Sama dengan *activity diagram* |
 | Revisi bila skema berubah | Ubah teks, render ulang | Ubah teks | Ubah manual |
 
-Saran awal: **4.25–4.29 cukup Mermaid** (tata letak otomatisnya sudah terbaca), **4.24 diatur manual** (Miro *shape* atau susun ulang posisi) karena tata letak otomatisnya terlalu melebar untuk satu halaman buku.
+Saran awal: **4.43–4.47 cukup Mermaid** (tata letak otomatisnya sudah terbaca), **4.42 diatur manual** (Miro *shape* atau susun ulang posisi) karena tata letak otomatisnya terlalu melebar untuk satu halaman buku.
 
 ---
 
@@ -795,5 +793,5 @@ Saran awal: **4.25–4.29 cukup Mermaid** (tata letak otomatisnya sudah terbaca)
 - Connolly, T. M., & Begg, C. E. (2005). *Database Systems: A Practical Approach to Design, Implementation, and Management* (4th ed.). Addison-Wesley. (Sudah di Bab II; cek bab *Entity–Relationship Modeling* dan lampiran notasi alternatif.)
 - Mermaid. *Entity Relationship Diagrams* (dokumentasi resmi). https://mermaid.js.org/syntax/entityRelationshipDiagram.html
 - Miro. *Database modeling made simple with new ER diagram templates in Miro*. https://miro.com/blog/database-modeling-erd-templates/
-- `src/db/schema/**` dan `drizzle/0000`–`0020*.sql` (otoritas verifikasi 28 Sept 2026).
+- `src/db/schema/**` dan `drizzle/0000`–`0021*.sql` (otoritas verifikasi 28 dan 30 Sept 2026).
 - "Kerangka Bab IV - Analisis dan Perancangan" Rev 9.1, subbab 4.2.3.

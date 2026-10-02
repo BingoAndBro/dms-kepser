@@ -2,14 +2,14 @@
 
 Langkah 4 dari rencana 7 langkah. Bahan menggambar *sequence diagram* Gambar 4.11, 4.13, …, 4.39 (satu per UC; nomor perkiraan mengikuti rumus Kerangka R12: UC-n → Gambar 4.(9+2n)).
 
-**Status (30 Sept, malam):** hasil verifikasi langkah 5 sudah diterapkan ke tabel dan blok Mermaid di bawah (bukti: `laporan-verifikasi-langkah5.md`; keputusan Daniel di bagian I laporan itu; ringkasan perubahan di bagian 20). Tanda [cek] yang sudah terjawab dihapus. **Status sebelumnya:** pola dan contoh UC-08 serta UC-13 **DISETUJUI** Daniel (30 Sept). **Versi terbaru (30 Sept, sore): blok Mermaid di dokumen ini sama persis dengan 15 widget di Miro** (lihat bagian 19). Penyesuaian notasi dan tujuh tambahan pesan dicatat di bagian 19; pesan tambahan diberi nomor sisipan (mis. `7a`) agar rujukan nomor pesan lama tetap berlaku. Tiga keputusan Daniel (30 Sept):
+**Status (30 Sept, malam):** hasil verifikasi langkah 5 sudah diterapkan ke tabel dan blok Mermaid di bawah (bukti: `laporan-verifikasi-langkah5.md`; keputusan Daniel di bagian I laporan itu; ringkasan perubahan di bagian 20). Tanda verifikasi yang sudah terjawab dihapus. **Status sebelumnya:** pola dan contoh UC-08 serta UC-13 **DISETUJUI** Daniel (30 Sept). **Versi terbaru (30 Sept, sore): blok Mermaid di dokumen ini sama persis dengan 15 widget di Miro** (lihat bagian 19). Penyesuaian notasi dan tujuh tambahan pesan dicatat di bagian 19; pesan tambahan diberi nomor sisipan (mis. `7a`) agar rujukan nomor pesan lama tetap berlaku. Tiga keputusan Daniel (30 Sept):
 1. Pola dua UC contoh disetujui.
 2. **Keenam gambar lama (4.18–4.23) dibuat ulang** dengan lifeline seragam R12. Isi dan urutan pesan tetap mengikuti `rancangan-sequence-diagram.md` (terverifikasi 27 Sept); yang berubah hanya lifeline tempat pesan digambar. Ke-15 UC semuanya punya gambar sendiri, termasuk UC-06.
 3. **Bila kode rute memanggil ORM langsung, `:Layanan` tidak digambar**; pesan digambar `:RuteAPI → :BasisData`. Ini dasar kalimat KNF-12 "sebagian modul". Menyimpang dari keseragaman R12 secara sadar.
 
 **Acuan:** `claude/Kerangka Bab IV - Analisis dan Perancangan (Revisi 12).md` (deskripsi UC), `claude/Spesifikasi Use Case Diagram dan Activity Diagram (30 Sept 2026).md` (node activity), `rancangan-sequence-diagram.md` (6 gambar terverifikasi), `claude/Sequence Diagram Miro - Catatan Notasi (27 Sept 2026).md`, `claude/Pedoman Penulisan dan Diagram (disepakati).md`, `claude/Koreksi Konteks - Dokumen Mentah dan Filter Status (30 Sept 2026).md`, `penjelasan-proyek-aplikasi.md`.
 
-**Tanda [cek]** = belum dapat dipastikan dari `penjelasan-proyek-aplikasi.md`; diverifikasi Claude Code terhadap `src/` pada langkah 5. Gambar tetap boleh dibuat; bila hasil verifikasi berbeda, hanya pesan bertanda [cek] yang diubah. Tidak ada isi yang ditebak tanpa tanda.
+**Verifikasi.** Semua butir yang sebelumnya ditandai belum pasti sudah dijawab atau dihapus; dokumen ini tidak lagi memakai tanda tersebut. Isi diverifikasi terhadap `src/` pada langkah 5.
 
 Miro tidak disentuh dalam langkah ini.
 
@@ -41,13 +41,13 @@ Keputusan 3: bila rute memanggil ORM langsung, lifeline `:Layanan` dihapus dan *
 
 ### 0.3 Kolom tabel pesan
 
-**No · Dari → Ke · Pesan · Padanan (activity · langkah UC) · Sumber / [cek]**. Jenis pesan ditandai pada kolom Dari → Ke: `→` panggilan, `⇢` *return*, `↻` *self-call*, `⇝` asinkron. *Return* yang tidak membawa data baru tidak diberi baris tersendiri di tabel; ia hanya digambar di blok Mermaid.
+**No · Dari → Ke · Pesan · Padanan (activity · langkah UC) · Sumber**. Jenis pesan ditandai pada kolom Dari → Ke: `→` panggilan, `⇢` *return*, `↻` *self-call*, `⇝` asinkron. *Return* yang tidak membawa data baru tidak diberi baris tersendiri di tabel; ia hanya digambar di blok Mermaid.
 
 ### 0.4 Label status
 
 | Kode | Label tampilan | Label di halaman laporan |
 |---|---|---|
-| `IN_PPK_VALIDATION` | Divalidasi PPK | — |
+| `IN_PPK_VALIDATION` | Diajukan ke PPK | — |
 | `IN_PPSPM_APPROVAL` | Menunggu PPSPM | — |
 | `NEED_REVISION` | Perlu Revisi | — |
 | `COMPLETED` | Selesai | Material |
@@ -85,7 +85,7 @@ Mermaid hanya untuk verifikasi dan acuan menggambar (widget Miro, lihat catatan 
 
 **Lifeline:** Pengguna · `:HalamanLogin` · `:RuteAPI` · `:LayananAutentikasi` · `:BasisData`. Endpoint: `POST /api/auth/login`, `POST /api/auth/role-switch`, `POST /api/auth/logout`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Pengguna → Halaman | `bukaHalamanLogin()` | A1 · 1 | `/login` |
 | 2 | Pengguna → Halaman | `isiKredensialDanMasuk(identitas, kataSandi)` | A2 · 2 | identitas = username atau NIP |
@@ -205,7 +205,7 @@ sequenceDiagram
 
 **Lifeline:** Pengguna · `:HalamanProfil` · `:RuteAPI` · `:LayananAkun` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/users/me`, `POST /api/users/me/change-password`, `POST /api/users/me?avatar=1` (unggah foto; `DELETE` untuk menghapus).
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Pengguna → Halaman | `bukaProfil()` | A1 · 2 | `/profile` |
 | 2 | Halaman → Rute | `muatProfil()` | A2 · 3 | `GET /api/users/me` |
@@ -324,7 +324,7 @@ sequenceDiagram
 
 **Lifeline:** Pegawai · `:HalamanPengajuan` · `:RuteAPI` · `:LayananPengajuan` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/users/me/is-ketua-tim/$kegiatanId`, `GET /api/master-kelengkapan`, `POST /api/upload`, `POST /api/dokumen/submit`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Pegawai → Halaman | `bukaAjukanDokumen()` | A1 · 2 | `/pegawai/dokumen/aju` |
 | 2 | Pegawai → Halaman | `pilihFungsiDanKegiatan(kegiatanId)` | A2 · 3 | |
@@ -499,7 +499,7 @@ sequenceDiagram
 
 **Lifeline:** Pegawai · `:HalamanDokumen` · `:RuteAPI` · `:LayananDokumen` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/dokumen/$id`, `GET /api/dokumen/$id/preview/$lampiranIndex` (atau `/download/`), `GET /api/files/access?token=…`, `POST /api/upload`, `PATCH /api/dokumen/$id`, `POST /api/dokumen/$id/submit`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Pegawai → Halaman | `bukaDokumenDiajukan()`, `pilihDokumen(idDokumen)` | A1, A3 · 2, 4 | `/pegawai/dokumen` |
 | 2 | Halaman → Rute | `muatDetailDokumen(idDokumen)` | A4 · 5 | `GET /api/dokumen/$id` |
@@ -556,7 +556,7 @@ sequenceDiagram
 | — | `break [0 baris berubah]` → `rollback()`, Rute ⇢ Halaman `409` | | catatan R4 · A4 | |
 | 39 | Rute → BasisData | `tulisRiwayat(RESUBMIT)`, `commit()` | R4 · A1 | |
 | 40 | Rute ⇢ Halaman | `200` | R4 | |
-| 41 | Halaman → Pegawai | `tampilkanStatusDivalidasiPPK()` | R4 · A1 | |
+| 41 | Halaman → Pegawai | `tampilkanStatusDiajukanKePPK()` | R4 · A1 | |
 
 ```mermaid
 sequenceDiagram
@@ -655,7 +655,7 @@ sequenceDiagram
         R->>DB: tulisRiwayat(RESUBMIT)
         R->>DB: commit()
         R--)-H: 200
-        H->>P: tampilkanStatusDivalidasiPPK()
+        H->>P: tampilkanStatusDiajukanKePPK()
     end
     deactivate H
     deactivate P
@@ -675,7 +675,7 @@ sequenceDiagram
 
 **Lifeline:** PPK · `:HalamanValidasi` · `:RuteAPI` · `:BasisData`. Endpoint: `POST /api/ppk/dokumen/$id/approve`, `POST /api/ppk/dokumen/$id/reject`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | PPK → Halaman | `bukaValidasiDokumen()`, `pilihDokumen(idDokumen)` | A1, A3 · 2, 4 | `/ppk/inbox`, `/ppk/dokumen/$id` |
 | 2 | Halaman → Rute | `muatDetailDokumen(idDokumen)` | A4 · 5 | `GET /api/ppk/dokumen/$id`, `ppk/dokumen/$id/index.tsx:120` |
@@ -691,7 +691,7 @@ sequenceDiagram
 | 8 | Halaman → Rute | `setujuiDokumen(idDokumen)` | A7 · 7 | `index.tsx:140` |
 | 9 | Rute ↻ | `periksaAsalPermintaan()`, `periksaSesiDanPeran(PPK)`, `validasiSkema()` | — | `approve.ts:27-46` |
 | 10 | Rute → BasisData | `ambilDokumen(idDokumen)` | A7 | `:58-71` |
-| 11 | Rute ↻ | `pastikanStatusMenungguPPK()` | A7 | `:79-83` |
+| 11 | Rute ↻ | `pastikanStatusDiajukanKePPK()` | A7 | `:79-83` |
 | 12 | Rute ↻ | `periksaTransisi(IN_PPK_VALIDATION, APPROVE, PPK)` → `IN_PPSPM_APPROVAL` | A7 · 7 | `:86`; `fsm.ts:26-31` |
 | 13 | Rute → BasisData | `mulaiTransaksi()` | A7 | `:92` |
 | 14 | Rute → BasisData | `ubahStatusBersyarat(IN_PPSPM_APPROVAL, jika status = IN_PPK_VALIDATION)` | A7 · 7 | `:93-106` |
@@ -707,7 +707,7 @@ sequenceDiagram
 | 21 | Rute ↻ | `periksaAsalPermintaan()`, `periksaSesiDanPeran(PPK)`, `validasiSkema(catatan 10–2000 karakter)` | D3 · 6a | `rejectDokumenSchema`, `schemas/dokumen.ts:103-105` |
 | — | `break [catatan tidak valid]` → Rute ⇢ Halaman `400` | | A9 · 6a | pertahanan server; tidak tercapai dari formulir normal |
 | 22 | Rute → BasisData | `ambilDokumen(idDokumen)` | A10 | `reject.ts:59-77` |
-| 22a | Rute ↻ | `pastikanStatusMenungguPPK()` | A10 | 400 bila bukan Divalidasi PPK, `reject.ts:79-84` |
+| 22a | Rute ↻ | `pastikanStatusDiajukanKePPK()` | A10 | 400 bila bukan Diajukan ke PPK, `reject.ts:79-84` |
 | 23 | Rute ↻ | `periksaTransisi(IN_PPK_VALIDATION, REJECT, PPK)` → `NEED_REVISION`, target USER | A10 · 6a | `fsm.ts:32-37` |
 | 24 | Rute → BasisData | `mulaiTransaksi()`, `ubahStatusBersyarat(NEED_REVISION, target USER, catatan)` | A10 | penjaga konflik sepola (narasi) |
 | 25 | Rute → BasisData | `tulisRiwayat(PPK_REJECT, catatan)`, `commit()` | A10 · 6a | |
@@ -743,7 +743,7 @@ sequenceDiagram
         R->>R: validasiSkema()
         R->>+DB: ambilDokumen(idDokumen)
         DB--)-R: dokumen (status IN_PPK_VALIDATION)
-        R->>R: pastikanStatusMenungguPPK()
+        R->>R: pastikanStatusDiajukanKePPK()
         R->>R: periksaTransisi(IN_PPK_VALIDATION, APPROVE, PPK)
         R->>DB: mulaiTransaksi()
         R->>+DB: ubahStatusBersyarat(IN_PPSPM_APPROVAL, jika status = IN_PPK_VALIDATION)
@@ -769,7 +769,7 @@ sequenceDiagram
         end
         R->>+DB: ambilDokumen(idDokumen)
         DB--)-R: dokumen
-        R->>R: pastikanStatusMenungguPPK()
+        R->>R: pastikanStatusDiajukanKePPK()
         R->>R: periksaTransisi(IN_PPK_VALIDATION, REJECT, PPK)
         R->>DB: mulaiTransaksi()
         R->>DB: ubahStatusBersyarat(NEED_REVISION, target USER, catatan)
@@ -796,7 +796,7 @@ sequenceDiagram
 
 **Lifeline:** PPSPM · `:HalamanPersetujuan` · `:RuteAPI` · `:BasisData`. Endpoint: `POST /api/ppspm/dokumen/$id/approve`, `POST /api/ppspm/dokumen/$id/reject`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | PPSPM → Halaman | `bukaPersetujuanDokumen()`, `pilihDokumen(idDokumen)` | A1, A3 · 2, 4 | `/ppspm/inbox` |
 | 2 | Halaman → Rute | `muatDetailDokumen(idDokumen)` | A4 · 5 | `GET /api/ppspm/dokumen/$id`, `ppspm/dokumen/$id.tsx:92` |
@@ -906,7 +906,7 @@ sequenceDiagram
 
 **Lifeline:** KSBU · `:HalamanPengklasifikasian` · `:RuteAPI` · `:LayananBerkas` · `:BasisData`. Endpoint: `GET /api/kasubag/klasifikasi`, `POST /api/kasubag/dokumen/$id/archive`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | KSBU → Halaman | `bukaPengklasifikasian()`, `pilihDokumen(idDokumen)` | A1–A3 · 2–4 | `/kasubag/inbox`, `/kasubag/dokumen/$id` |
 | 2 | KSBU → Halaman | `pilihTahunAnggaran(tahun)` | A4 · 4 | TA diisi awal dengan tahun dokumen (`kasubag/dokumen/$id/index.tsx:300`); KSBU memilih tahun anggaran sendiri (`:656-673`); yang dikirim hanya `tahun_anggaran`. Tidak ada peringatan bila TA ≠ tahun dokumen (keterbatasan K-UC07-TA) |
@@ -1023,28 +1023,28 @@ sequenceDiagram
 
 **Konteks.** Skenario utama: KSBU membuka detail berkas lalu (a) menutup berkas terbuka dengan Nomor SPM dan masa simpan minimal, atau (b) membersihkan file berkas berstatus Usul Pembersihan. Pembersihan = pengelolaan daur hidup dokumen elektronik, bukan penyusutan arsip; metadata, Nomor SPM, dan riwayat tetap tersimpan.
 
-**Lifeline:** KSBU · `:HalamanBerkas` · `:RuteAPI` · `:LayananBerkas` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/kasubag/berkas/$id` [cek], `POST /api/kasubag/berkas/$id/close`, `POST /api/kasubag/berkas/$id/lifecycle`.
+**Lifeline:** KSBU · `:HalamanBerkas` · `:RuteAPI` · `:LayananBerkas` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/kasubag/berkas/$id`, `POST /api/kasubag/berkas/$id/close`, `POST /api/kasubag/berkas/$id/lifecycle`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | KSBU → Halaman | `bukaDetailBerkas(idBerkas)` | A1–A3 · 2–4 | |
-| 2 | Halaman → Rute | `muatDetailBerkas(idBerkas)` | A4 | [cek] path GET |
+| 2 | Halaman → Rute | `muatDetailBerkas(idBerkas)` | A4 | |
 | 3 | Rute ↻ | `periksaSesiDanPeran(KSBU)` | — | `requireBerkasArsipApiSession` |
-| 4 | Rute → Layanan → BasisData | `ambilDetailBerkas(idBerkas)` → `bacaBerkasIsiDanRiwayat(idBerkas)` | A4 | `berkas-arsip-read-model.ts` [cek] |
+| 4 | Rute → Layanan → BasisData | `ambilDetailBerkas(idBerkas)` → `bacaBerkasIsiDanRiwayat(idBerkas)` | A4 | `berkas-arsip-read-model.ts` |
 | 5 | Rute ⇢ Halaman | `200 (detail berkas)` | A4 | |
 | 6 | Halaman → KSBU | `tampilkanDetailBerkas()` | A4 | |
 | — | `alt [tutup berkas: berkas Terbuka]` | | D1 · 4 | |
 | 7 | KSBU → Halaman | `pilihTutupBerkas()` | T1 | |
 | 8 | Halaman → KSBU | `tampilkanDialogTutup()` | — | `CloseBerkasDialog` (tanpa ketik frasa) |
 | 9 | KSBU → Halaman | `isiDanKonfirmasi(nomorSPM, masaSimpan)` | T3 · 5 | 1/3/5/10 tahun/permanen |
-| 10 | Halaman ↻ | `validasiIsian()` | D3 | [cek] tombol nonaktif? |
+| 10 | Halaman ↻ | `validasiIsian()` | D3 | |
 | 11 | Halaman → Rute | `tutupBerkas(idBerkas, nomorSPM, masaSimpan)` | — | |
 | 12 | Rute ↻ | `periksaAsalPermintaan()`, `periksaSesiDanPeran(KSBU)`, `periksaIsian()` | D3 | skema `.strict()`, `schemas/berkas-arsip.ts:46-58` |
 | 13 | Rute → Layanan | `tutupBerkas(idBerkas, nomorSPM, masaSimpan)` | — | |
-| 14 | Layanan → BasisData | `mulaiTransaksi()` | — | [cek] pengirim |
-| 15 | Layanan → BasisData | `bacaBerkasDanJumlahItem(idBerkas)` | D2 | [cek] |
-| 16 | Layanan ↻ | `pastikanTerbukaDanBerisi()` | D2 · 4a | [cek] |
-| — | `break [berkas kosong atau sudah ditutup]` → `rollback()`, `4xx` | | T2 · 4a | [cek] kode HTTP |
+| 14 | Layanan → BasisData | `mulaiTransaksi()` | — | |
+| 15 | Layanan → BasisData | `bacaBerkasDanJumlahItem(idBerkas)` | D2 | |
+| 16 | Layanan ↻ | `pastikanTerbukaDanBerisi()` | D2 · 4a | |
+| — | `break [berkas kosong atau sudah ditutup]` → `rollback()`, `4xx` | | T2 · 4a | |
 | 17 | Layanan → BasisData | `perbaruiStatusBerkas(CLOSED, AKTIF, nomorSPM, masaSimpan)` | T5 · 6 | B.3; `berkas_arsip_closed_metadata_check` |
 | 18 | Layanan → BasisData | `catatRiwayatBerkas(BERKAS_DITUTUP)`, `commit()` | T5 · 6 | |
 | 19 | Rute ⇢ Halaman; Halaman → KSBU | `200` → `tampilkanHasilTutup()` | T5 | |
@@ -1056,8 +1056,8 @@ sequenceDiagram
 | 23 | Rute → Layanan | `bersihkanFileBerkas(idBerkas)` | — | `berkas-arsip-physical-destruction.ts` |
 | 24 | Layanan → BasisData | `bacaBerkasDanItem(idBerkas)` | — | |
 | 25 | Layanan ↻ | `pastikanStatusUsulPembersihan()`, `susunDaftarFile()` | — | daftar file dari isi berkas, bukan masukan klien |
-| 26 | Layanan → BasisData | `mulaiTransaksi()`, `perbaruiStatusBerkas(DIMUSNAHKAN)`, `tandaiLampiranDibersihkan(BERKAS_DIMUSNAHKAN)`, `catatRiwayatBerkas(BERKAS_DIMUSNAHKAN)`, `catatAudit(BERKAS_LAMPIRAN_DIBERSIHKAN)`, `commit()` | P3 · A4 | `:713` (audit); [cek] |
-| 27 | Layanan → PenyimpananFile | `hapusFileAman(daftarPath)` + `loop [setiap path]` `hapusFile(pathLogis)` | P3 · A4 | [cek] |
+| 26 | Layanan → BasisData | `mulaiTransaksi()`, `perbaruiStatusBerkas(DIMUSNAHKAN)`, `tandaiLampiranDibersihkan(BERKAS_DIMUSNAHKAN)`, `catatRiwayatBerkas(BERKAS_DIMUSNAHKAN)`, `catatAudit(BERKAS_LAMPIRAN_DIBERSIHKAN)`, `commit()` | P3 · A4 | `:713` (audit) |
+| 27 | Layanan → PenyimpananFile | `hapusFileAman(daftarPath)` + `loop [setiap path]` `hapusFile(pathLogis)` | P3 · A4 | |
 | 28 | Rute ⇢ Halaman; Halaman → KSBU | `200` → `tampilkanHasilPembersihan()` | P3 | |
 
 ```mermaid
@@ -1142,9 +1142,8 @@ sequenceDiagram
 
 **Narasi.** Setelah ditutup, Cara Pembayaran yang sama tidak dapat dipakai lagi pada TA yang sama. Akses file berkas sesudah dibersihkan dijawab 410. Tidak digambar: ekspor ZIP berkas atau CSV metadata (A1; `GET /api/kasubag/berkas/$id/export-zip`, diunduh lewat navigasi biasa, ≤ 500 dokumen, diawali `DAFTAR_ISI.txt`); usulkan pembersihan dan batalkan usulan (A2, A3; `lifecycle` aksi `propose_destruction`/`cancel_proposal`, pola cabang kedua tanpa frasa dan tanpa `:PenyimpananFile`); ubah metadata berkas; 401/403.
 
-**Catatan urutan.** Pesan 26–27 mengikuti narasi Gambar 4.23 yang terverifikasi ("pembersihan file berkas: status diubah dulu, baru file dihapus"), **bukan** urutan Kerangka R12 Blok 2 (`hapusBerkasFisik()` sebelum `perbaruiStatusBerkas()`). Kerangka R12 perlu disesuaikan setelah [cek] (e).
+**Catatan urutan.** Pesan 26–27 mengikuti narasi Gambar 4.23 yang terverifikasi ("pembersihan file berkas: status diubah dulu, baru file dihapus"), **bukan** urutan Kerangka R12 Blok 2 (`hapusBerkasFisik()` sebelum `perbaruiStatusBerkas()`). Kerangka R12 perlu disesuaikan.
 
-**[cek]:** (a) path GET detail berkas; (b) syarat berkas berisi dan kode HTTP-nya; (c) pengirim `mulaiTransaksi()`; (d) pembaruan bersyarat/409 pada tutup dan bersihkan; (e) urutan status vs hapus file di `berkas-arsip-physical-destruction.ts`; (f) `tandaiLampiranDibersihkan` dalam transaksi yang sama; (g) audit dicatat per dokumen (`entity_type` hanya `DOKUMEN`); (h) modul penyimpanan terpisah dipanggil (bila tidak, `hapusFile` menjadi *self-call* `:LayananBerkas` dan `:PenyimpananFile` dihapus); (i) `validasiIsian` di klien.
 
 ---
 
@@ -1156,7 +1155,7 @@ Dua `alt` (pengecualian pola, 0.2): (1) menu laporan (activity D1); (2) **pintu 
 
 **Lifeline:** Pengguna · `:HalamanLaporan` · `:RuteAPI` · `:LayananLaporan` · `:BasisData`. Endpoint: `GET /api/laporan/saya`, `GET /api/laporan/kegiatan`, `GET /api/laporan/kinerja?scope=laporan_kinerja`, `GET /api/laporan/manual-arsip/$id/attachments/$attachmentId/{preview,download}`, `POST …/export-zip?mode=ticket`, `GET …/export-zip?ticket=…`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | — | `alt [Laporan Saya: Pegawai]` | | D1 · 2–3 | |
 | 1 | Pengguna → Halaman | `bukaLaporanSaya()` | S1 · 2 | `/pegawai/laporan/saya` |
@@ -1342,7 +1341,7 @@ sequenceDiagram
 
 **Lifeline:** PPK · `:HalamanNominalRealisasi` · `:RuteAPI` · `:LayananLaporan` · `:BasisData`. Endpoint: `GET /api/laporan/kinerja?start_date=…&end_date=…`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | PPK → Halaman | `bukaNominalRealisasi()` | A1 · 2 | `/ppk/monitoring-realisasi` |
 | — | `loop [setiap kali periode dipilih]` | | A2, D1, A3–A4 · 3, A1 | pertama: triwulan berjalan |
@@ -1421,7 +1420,7 @@ sequenceDiagram
 
 **Lifeline:** Ketua Tim · `:HalamanMonitoringTim` · `:RuteAPI` · `:LayananLaporan` · `:BasisData`. Endpoint: `GET /api/users/me/ketua-tim`, `GET /api/laporan/kegiatan?scope=monitoring`, `POST /api/laporan/kegiatan/export-zip?mode=ticket`, `GET …?ticket=…`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Ketua Tim → Halaman | `bukaMonitoringDokumenTim()` | A1 · 2 | `/pegawai/monitoring-dokumen-tim` |
 | 1a | Halaman → Rute | `ambilPenugasanSaya()` | A1 · 2 | `GET /api/users/me/ketua-tim`; bukan Ketua Tim → halaman "akses ditolak" dan laporan tidak dimuat (`monitoring-dokumen-tim.tsx:144-152`) |
@@ -1430,7 +1429,7 @@ sequenceDiagram
 | 2 | Halaman → Rute | `muatDokumenTim(scope monitoring)` | A2 · 3 | `monitoring-dokumen-tim.tsx:157` |
 | 3 | Rute ↻ | `periksaSesi()` | — | |
 | 4 | Rute → BasisData | `ambilPenugasanKetuaTim(pengguna)` | A2 · 3 | `kegiatan.ts:84-91` |
-| 5 | Rute → BasisData | `ambilDokumenTim(kegiatanDipimpin, status monitoring)` | A2 · 3 | Divalidasi PPK, Menunggu PPSPM, Perlu Revisi, Selesai, Tersimpan (`kegiatan-scope.ts:12-15`) |
+| 5 | Rute → BasisData | `ambilDokumenTim(kegiatanDipimpin, status monitoring)` | A2 · 3 | Diajukan ke PPK, Menunggu PPSPM, Perlu Revisi, Selesai, Tersimpan (`kegiatan-scope.ts:12-15`) |
 | 6 | Rute ⇢ Halaman | `200 (dokumen tim)` | A2 | |
 | 7 | Halaman ↻ | `tentukanPosisi()` | A2 · 3 | `getPosisiDokumen` di peramban, `kegiatan-scope.ts:41-55`; `monitoring-dokumen-tim.tsx:648, 700, 727` |
 | 8 | Halaman ↻ | `tandaiTertahanMinimal7Hari()` | A2 · A1 | kondisi `days >= 7` dari `updated_at` (`monitoring-dokumen-tim.tsx:121, 661`); K-9 |
@@ -1525,7 +1524,7 @@ sequenceDiagram
 
 **Lifeline:** Ketua Tim · `:HalamanPembersihan` · `:RuteAPI` · `:LayananPembersihan` · `:BasisData` · `:PenyimpananFile`. Endpoint: `GET /api/pembersihan-dokumen`, `POST /api/pembersihan-dokumen/bersihkan`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Ketua Tim → Halaman | `bukaPembersihanDokumen()` | A1 · 2 | |
 | 2 | Halaman → Rute | `ambilDaftarKandidat()` | A2 · 3 | `pembersihan-dokumen.ts:31` |
@@ -1627,7 +1626,7 @@ sequenceDiagram
 
 **Lifeline:** Pengguna · `:HalamanLogAktivitas` · `:RuteAPI` · `:BasisData`. Endpoint: `GET /api/activity-log`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Pengguna → Halaman | `bukaLogAktivitas()` | A1 · 2 | |
 | 2 | Halaman → Rute | `muatLog(cakupan)` | A2 · 3 | bawaan milik sendiri; `scope=all` untuk seluruh pengguna |
@@ -1690,7 +1689,7 @@ sequenceDiagram
 
 **Lifeline:** Admin · `:HalamanMasterUser` · `:RuteAPI` · `:LayananPengguna` · `:BasisData`. Endpoint: `GET/POST /api/users/`, `/api/users/$id`, `GET/POST/DELETE /api/ketua-tim/`.
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Admin → Halaman | `bukaMasterUser()` | A1 · 2 | `/admin/master-data/user` |
 | 2 | Halaman → Rute ⇢ Halaman | `muatPengguna()` → `200 (daftar pengguna)` | A2 · 3 | `GET /api/users/`, `admin.master-data.user.tsx:385` |
@@ -1788,7 +1787,7 @@ sequenceDiagram
 
 **Lifeline:** Admin · `:HalamanDataMaster` · `:RuteAPI` · `:BasisData`. Endpoint: `/api/master-*` (mis. `GET/POST /api/master-komponen`, `PATCH/DELETE /api/master-komponen/$id`; `DELETE` = penonaktifan).
 
-| No | Dari → Ke | Pesan | Padanan | Sumber / [cek] |
+| No | Dari → Ke | Pesan | Padanan | Sumber |
 |---|---|---|---|---|
 | 1 | Admin → Halaman | `bukaMenuDataMaster(jenis)` | A1 · 2 | `/admin/master-data/*` |
 | 2 | Halaman → Rute | `muatData(jenis)` | A2 · 3 | GET wajib sesi (`requireAnyLocalSession`, D-23) |
@@ -1881,12 +1880,12 @@ sequenceDiagram
 |---|---|---|
 | Kerangka R12 | 4.2.4 Konvensi c | Tambah: "Bila rute memanggil ORM langsung, `:Layanan` tidak digambar" (keputusan 3); "boleh dua `alt` pada UC-01 dan UC-09" |
 | Kerangka R12 | 4.2.4.5, 4.2.4.6 | Lifeline sequence UC-05/UC-06 tanpa `:LayananPersetujuan` |
-| Kerangka R12 | 4.2.4.8 Blok 2 | Urutan pesan mengikuti UC-08 di sini (status dulu, baru file) setelah [cek] (e) |
+| Kerangka R12 | 4.2.4.8 Blok 2 | Urutan pesan mengikuti UC-08 di sini (status dulu, baru file) |
 | Kerangka R12 | Lampiran C | Baris 4.18–4.23: "dibuat ulang (lifeline seragam)"; 4.22 dibagi ke UC-04 dan UC-09 |
 | `rancangan-sequence-diagram.md` | Judul | Tambah catatan: diganti oleh dokumen ini; tetap dipakai sebagai bukti verifikasi kode 27 Sept |
 | Bab II | *Sequence diagram* | Satu kalimat notasi *interaction use* (`ref`) bila UC-09, UC-10, UC-11 memakai rujukan `ref` (OMG, 2017) |
 
-## 18. Rekap [cek] untuk Langkah 5 (tambahan Q-18) — SUDAH DIJAWAB (30 Sept, malam)
+## 18. Rekap butir verifikasi Langkah 5 (tambahan Q-18) — SUDAH DIJAWAB (30 Sept, malam)
 
 Semua butir di bawah sudah diverifikasi terhadap kode; hasilnya diterapkan ke tabel dan blok di atas. Rekap ini dipertahankan sebagai riwayat.
 
@@ -1932,7 +1931,7 @@ UC-08 dan UC-13 (DISETUJUI) hanya menerima penyesuaian notasi.
 
 **Gambar lama 4.18–4.23** masih ada di board (y ≈ 15.031) dan tidak dapat dihapus lewat alat; hapus manual bila sudah tidak dipakai.
 
-**Sesudah langkah 5:** bila verifikasi kode mengubah pesan bertanda [cek], ubah tabel dan blok di dokumen ini, render ulang, lalu perbarui sumber Mermaid widget yang bersangkutan di Miro.
+**Sesudah langkah 5:** bila verifikasi kode mengubah pesan, ubah tabel dan blok di dokumen ini, render ulang, lalu perbarui sumber Mermaid widget yang bersangkutan di Miro.
 
 ### 19.1 Perbaikan tata letak (30 Sept 2026, malam)
 
@@ -1948,7 +1947,7 @@ Catatan: perenderan lokal (mermaid-cli) menampilkan *guard* sebagai `[[...]]` ka
 
 ## 20. Penerapan Hasil Langkah 5 (30 Sept 2026, malam)
 
-Sumber: `laporan-verifikasi-langkah5.md` (bagian A–I). Tanda [cek] dihapus; nomor baris kode diperbarui; nomor pesan sisipan memakai huruf (mis. `3a`, `12a`) atau `N-2`.
+Sumber: `laporan-verifikasi-langkah5.md` (bagian A–I). Tanda verifikasi dihapus; nomor baris kode diperbarui; nomor pesan sisipan memakai huruf (mis. `3a`, `12a`) atau `N-2`.
 
 | UC | Perubahan utama |
 |---|---|
@@ -1957,11 +1956,11 @@ Sumber: `laporan-verifikasi-langkah5.md` (bagian A–I). Tanda [cek] dihapus; no
 | UC-03 | Status Ketua Tim `GET /api/users/me/is-ketua-tim/$kegiatanId`; checklist tanpa parameter rantai (dicocokkan di peramban); nomor baris `submit.ts` diperbarui |
 | UC-04 | Riwayat dimuat terpisah; hak baca setelah dokumen dibaca; satu tombol "Ajukan Ulang" + konfirmasi, PATCH lalu POST otomatis; tanpa keterangan (Material); `ambilDokumen` dan `periksaTransisi` sebelum syarat kirim ulang |
 | UC-05 | Detail memuat riwayat; validasi catatan di klien; cek status pada tolak |
-| UC-06 | Idem UC-05; hapus `[cek]`; cek persetujuan ganda di narasi |
+| UC-06 | Idem UC-05; hapus tanda verifikasi; cek persetujuan ganda di narasi |
 | UC-07 | Kueri klasifikasi dan berkas dari rute, penyaringan fungsi murni; TA diisi awal dari tahun dokumen; keterbatasan K-UC07-TA |
 | UC-08 | Hanya notasi (argumen tabel disamakan, return kata benda) |
 | UC-09 | Tanpa `scope` dan tanpa `:PenyimpananFile`; urutan pesan 11–12 ditukar; lampiran dokumen tambahan KSBU lewat layanan; otorisasi ZIP di rute |
-| UC-10 | Hanya penghapusan `[cek]` dan rujukan baris |
+| UC-10 | Hanya penghapusan tanda verifikasi dan rujukan baris |
 | UC-11 | Gerbang status Ketua Tim; tertahan ≥ 7 hari; tanpa `:PenyimpananFile`; otorisasi ZIP di rute |
 | UC-12 | Narasi: pengguna tanpa penugasan melihat "Akses ditolak" |
 | UC-13 | `:LayananRiwayat` dihapus; pesan ke basis data dari `:RuteAPI` |

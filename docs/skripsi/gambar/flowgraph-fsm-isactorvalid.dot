@@ -1,0 +1,24 @@
+// Flow graph fungsi isActorValidForAction() pada src/lib/fsm.ts (baris 129-156)
+// switch digambar sebagai satu simpul predikat bercabang tujuh; tiap return satu simpul.
+// Simpul diarsir = simpul predikat. Label sisi = nama case.
+// Rincian simpul dan sisi: basis-path-fsm.md bagian 2.
+digraph isActorValidForAction {
+  graph [fontname="Arial", nodesep=0.35, ranksep=0.7, pad=0.2];
+  node  [shape=circle, fixedsize=true, width=0.42, fontname="Arial", fontsize=12, style=solid];
+  edge  [fontname="Arial", fontsize=10, arrowsize=0.6];
+
+  // Simpul predikat (1)
+  1 [style=filled, fillcolor="#c8c8c8"];
+
+  // Simpul biasa (8)
+  2; 3; 4; 5; 6; 7; 8; 9;
+
+  1 -> 2 [label="SUBMIT"];
+  1 -> 3 [label="APPROVE"];
+  1 -> 4 [label="REJECT"];
+  1 -> 5 [label="RESUBMIT"];
+  1 -> 6 [label="RESUBMIT_PPK"];
+  1 -> 7 [label="KEMBALIKAN"];
+  1 -> 8 [label="default"];
+  2 -> 9; 3 -> 9; 4 -> 9; 5 -> 9; 6 -> 9; 7 -> 9; 8 -> 9;
+}
